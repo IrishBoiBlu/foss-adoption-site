@@ -256,9 +256,8 @@
   if (!document.querySelector('[data-testid="hero"]')) return;
   if (document.querySelector(".foss-paw-trail")) return;
 
-  var PATTERN = 340;
-  var COPIES = 3;
-  var STEP = PATTERN / 8;
+  var COUNT = 12;
+  var FADE = 0.07;
   var PAW =
     '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">' +
     '<ellipse cx="7" cy="7.4" rx="2.1" ry="2.7"></ellipse>' +
@@ -277,48 +276,53 @@
   track.className = "foss-paw-track";
   trail.appendChild(track);
 
-  for (var copy = 0; copy < COPIES; copy++) {
-    for (var i = 0; i < 8; i++) {
-      var wide = i % 2 === 1;
-      var paw = document.createElement("span");
-      paw.className = wide ? "foss-paw foss-paw-wide" : "foss-paw";
-      var size = 20 + ((i * 5 + copy * 3) % 5) * 3;
-      paw.style.top = copy * PATTERN + i * STEP + "px";
-      paw.style.left = (wide ? 36 : 12) + ((i + copy) % 3) * 4 + "px";
-      paw.style.width = size + "px";
-      paw.style.height = size + "px";
-      paw.style.opacity = (0.18 + ((i * 3) % 4) * 0.05).toFixed(2);
-      paw.style.transform = "rotate(" + (i % 3 - 1) * 14 + "deg)";
-      paw.innerHTML = PAW;
-      track.appendChild(paw);
-    }
+  var paws = [];
+  for (var i = 0; i < COUNT; i++) {
+    var wide = i % 2 === 1;
+    var size = 20 + (i % 5) * 3;
+    var paw = document.createElement("span");
+    paw.className = wide ? "foss-paw foss-paw-wide" : "foss-paw";
+    // The first print sits at the bottom of the column, the last at the top,
+    // so the trail fills upward as the page goes down.
+    paw.style.top = (92 - (i * 84) / (COUNT - 1)).toFixed(2) + "%";
+    paw.style.left = (wide ? 36 : 12) + (i % 3) * 4 + "px";
+    paw.style.width = size + "px";
+    paw.style.height = size + "px";
+    paw.style.opacity = "0";
+    paw.innerHTML = PAW;
+    track.appendChild(paw);
+    paws.push({ el: paw, at: (i / (COUNT - 1)) * 0.82, base: 0.22 + (i % 4) * 0.05 });
   }
 
   document.body.appendChild(trail);
 
-  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-  function pageTop() {
-    return window.pageYOffset || document.documentElement.scrollTop || 0;
-  }
-
-  var shown = pageTop();
-  var target = shown;
+  var span = 1;
   var frame = 0;
 
   function paint() {
     frame = 0;
-    shown += (target - shown) * 0.2;
-    var shift = shown * 0.5;
-    track.style.transform = "translate3d(0," + -(shift % PATTERN) + "px,0)";
-    if (Math.abs(target - shown) > 0.4) frame = window.requestAnimationFrame(paint);
+    var top = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var progress = Math.min(1, Math.max(0, top / span));
+    for (var j = 0; j < paws.length; j++) {
+      var item = paws[j];
+      var seen = Math.min(1, Math.max(0, (progress - item.at) / FADE));
+      item.el.style.opacity = (item.base * seen).toFixed(3);
+      item.el.style.transform =
+        "translate3d(0," + (16 * (1 - seen)).toFixed(1) + "px,0) rotate(" + ((j % 3 - 1) * 14) + "deg)";
+    }
   }
 
   function onScroll() {
-    target = pageTop();
     if (!frame) frame = window.requestAnimationFrame(paint);
   }
 
+  function measure() {
+    span = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    onScroll();
+  }
+
   window.addEventListener("scroll", onScroll, { passive: true });
-  paint();
+  window.addEventListener("resize", measure);
+  window.addEventListener("load", measure);
+  measure();
 })();

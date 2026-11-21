@@ -161,6 +161,8 @@ body.foss-menu-open {
   position: absolute;
   display: block;
   color: hsl(var(--coral) / 0.9);
+  opacity: 0;
+  will-change: opacity, transform;
 }
 
 .foss-paw svg {
@@ -183,7 +185,7 @@ body.foss-menu-open {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .foss-paw-track {
+  .foss-paw {
     will-change: auto;
   }
 }
