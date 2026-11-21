@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "shelter-staff-admin-local",
+  "main": "dist/worker.js",
+  "compatibility_date": "2026-11-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "shelter-staff-local",
+      "database_id": "00000000-0000-0000-0000-000000000001"
+    }
+  ],
+  "vars": {
+    "FREEBUFF_CLIENT_ID": "928958cc-a370-4c20-9352-25846c5804dc",
+    "FREEBUFF_ISSUER": "https://freebuff.com/oidc",
+    "APP_ORIGIN": "http://localhost:8787"
+  }
+}

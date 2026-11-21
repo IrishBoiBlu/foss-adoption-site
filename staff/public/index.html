@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shelter staff</title>
+<style>
+  :root {
+    --ink: #22201d;
+    --ink-soft: #5c574f;
+    --line: #e3ddd2;
+    --bg: #f7f4ee;
+    --card: #fffdf8;
+    --brand: #2f5d50;
+    --brand-soft: #e7f0eb;
+    --danger: #96331f;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+  a { color: var(--brand); }
+  h1, h2, h3 { font-family: Georgia, "Iowan Old Style", serif; font-weight: 600; margin: 0; }
+  h1 { font-size: 26px; }
+  h2 { font-size: 19px; }
+  .shell { display: grid; grid-template-columns: 230px 1fr; min-height: 100vh; }
+  nav.side {
+    background: #101d19; color: #eef3f0; padding: 22px 16px; display: flex; flex-direction: column; gap: 6px;
+  }
+  nav.side .brand { font-family: Georgia, serif; font-size: 17px; line-height: 1.3; margin-bottom: 18px; }
+  nav.side .brand small { display: block; font: 11px/1.4 ui-sans-serif, system-ui; letter-spacing: .08em; text-transform: uppercase; color: #8fae9f; margin-top: 6px; }
+  nav.side button {
+    all: unset; cursor: pointer; padding: 9px 12px; border-radius: 8px; color: #cfe0d7; font-size: 14px;
+  }
+  nav.side button:hover { background: #1c2f28; }
+  nav.side button[aria-current="page"] { background: #24382f; color: #fff; font-weight: 600; }
+  main { padding: 28px 32px 60px; max-width: 900px; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+  .who { font-size: 13px; color: var(--ink-soft); text-align: right; }
+  .who strong { display: block; color: var(--ink); }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 20px 22px; margin-bottom: 18px;
+  }
+  .card > h2 { margin-bottom: 4px; }
+  .card p.hint { color: var(--ink-soft); font-size: 13.5px; margin: 4px 0 16px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
+  input[type=text], input[type=email], input[type=url], input[type=password], select, textarea {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px;
+    font: inherit; background: #fff; color: var(--ink);
+  }
+  textarea { min-height: 74px; resize: vertical; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .actions { display: flex; align-items: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+  button.primary, button.ghost, button.danger {
+    font: inherit; font-weight: 600; padding: 9px 16px; border-radius: 999px; cursor: pointer; border: 1px solid transparent;
+  }
+  button.primary { background: var(--brand); color: #fff; }
+  button.primary:hover { background: #264c41; }
+  button.ghost { background: transparent; border-color: var(--line); color: var(--ink); }
+  button.danger { background: transparent; border-color: #dcc3bb; color: var(--danger); }
+  button:disabled { opacity: .55; cursor: default; }
+  .status { font-size: 13px; color: var(--ink-soft); }
+  .status.ok { color: var(--brand); font-weight: 600; }
+  .status.err { color: var(--danger); font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); padding: 0 8px 8px 0; }
+  td { padding: 10px 8px 10px 0; border-top: 1px solid var(--line); vertical-align: middle; }
+  td select { width: auto; padding: 5px 8px; }
+  .pill { display: inline-block; font-size: 11.5px; padding: 2px 9px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+  .pill.off { background: #f2e7e2; color: var(--danger); }
+  .logo-preview { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+  .logo-preview img { height: 54px; width: auto; border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 4px; }
+  .center-card { max-width: 460px; margin: 14vh auto; text-align: center; }
+  .center-card .card { text-align: center; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  #toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #101d19; color: #fff; padding: 10px 18px; border-radius: 999px; font-size: 13.5px;
+    opacity: 0; pointer-events: none; transition: opacity .18s;
+  }
+  #toast.show { opacity: 1; }
+  .hidden { display: none !important; }
+  @media (max-width: 760px) {
+    .shell { grid-template-columns: 1fr; }
+    nav.side { flex-direction: row; overflow-x: auto; padding: 12px; }
+    nav.side .brand { display: none; }
+    main { padding: 20px 16px 50px; }
+    .row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="booting" class="center-card"><div class="card"><h1>Opening your staff area…</h1></div></div>
+
+<div id="signin" class="center-card hidden">
+  <div class="card">
+    <h1>Staff area</h1>
+    <p class="hint">Friends of the Stokes Shelter</p>
+    <p>This area is for shelter staff. Sign in with your Freebuff account — the same one your admin added.</p>
+    <a class="button primary" href="/auth/freebuff/signin?returnTo=/" style="display:inline-block;text-decoration:none">Sign in with Freebuff</a>
+  </div>
+</div>
+
+<div id="notstaff" class="center-card hidden">
+  <div class="card">
+    <h1>You're signed in, but not on staff yet</h1>
+    <p class="hint" id="notstaff-who"></p>
+    <p>Ask the site owner to add this email address under <strong>Staff &amp; access</strong>.</p>
+    <form method="post" action="/auth/freebuff/signout"><button class="ghost" type="submit">Sign out</button></form>
+  </div>
+</div>
+
+<div id="app" class="shell hidden">
+  <nav class="side">
+    <div class="brand">Stokes Shelter<small>Staff area</small></div>
+    <button data-page="site">Site &amp; header</button>
+    <button data-page="logo">Logo</button>
+    <button data-page="staff" data-manage>Staff &amp; access</button>
+    <button data-page="email" data-settings>Email</button>
+    <button data-page="cloudflare" data-settings>Cloudflare security</button>
+    <button data-page="account">My account</button>
+  </nav>
+  <main>
+    <div class="topbar">
+      <h1 id="page-title">Site &amp; header</h1>
+      <div class="who"><strong id="who-name">—</strong><span id="who-role"></span></div>
+    </div>
+
+    <section data-panel="site">
+      <form class="card" id="site-form">
+        <h2>Site identity</h2>
+        <p class="hint">These values appear across the public site. Changes go live within a minute.</p>
+        <label for="site.name">Site name</label>
+        <input type="text" id="site.name" name="site.name">
+        <label for="site.tagline">Tagline</label>
+        <input type="text" id="site.tagline" name="site.tagline">
+        <label for="header.cta_label">Main button label</label>
+        <input type="text" id="header.cta_label" name="header.cta_label">
+        <label for="header.cta_url">Main button link</label>
+        <input type="text" id="header.cta_url" name="header.cta_url">
+        <label for="footer.contact_email">Contact email shown on the site</label>
+        <input type="email" id="footer.contact_email" name="footer.contact_email">
+        <h2 style="margin-top:26px">Announcement bar</h2>
+        <p class="hint">A one-line message at the very top of every page — closures, events, urgent needs.</p>
+        <label for="header.announcement">Message</label>
+        <textarea id="header.announcement" name="header.announcement" placeholder="We are closed for the holiday weekend."></textarea>
+        <label for="header.show_announcement" style="display:flex;gap:9px;align-items:center;font-weight:500">
+          <input type="checkbox" id="header.show_announcement" name="header.show_announcement" style="width:auto">
+          Show the announcement bar
+        </label>
+        <div class="actions">
+          <button class="primary" type="submit">Save changes</button>
+          <span class="status" data-status="site"></span>
+        </div>
+      </form>
+    </section>
+
+    <section data-panel="logo" class="hidden">
+      <div class="card">
+        <h2>Logo</h2>
+        <p class="hint">A PNG, JPG, GIF, WebP or SVG under 400&nbsp;KB. A wide or square logo both work; it is shown in the site header.</p>
+        <div class="logo-preview">
+          <img id="logo-img" alt="Current logo" src="/api/logo">
+          <span class="status" id="logo-status"></span>
+        </div>
+        <form id="logo-form" style="margin-top:16px">
+          <label for="logo-file">Replace the logo</label>
+          <input type="file" id="logo-file" name="logo" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+          <div class="actions">
+            <button class="primary" type="submit">Upload logo</button>
+            <span class="status" data-status="logo"></span>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section data-panel="staff" class="hidden">
+      <div class="card">
+        <h2>Staff &amp; access</h2>
+        <p class="hint">Add someone by the email they use for Freebuff. Editors can change site wording and the announcement; admins can also change settings, email, Cloudflare and staff.</p>
+        <form id="staff-form">
+          <div class="row">
+            <div>
+              <label for="staff-email">Email address</label>
+              <input type="email" id="staff-email" placeholder="name@example.com" required>
+            </div>
+            <div>
+              <label for="staff-role">Role</label>
+              <select id="staff-role"><option value="editor">Editor</option><option value="admin">Admin</option></select>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="primary" type="submit">Add staff member</button>
+            <span class="status" data-status="staff"></span>
+          </div>
+        </form>
+      </div>
+      <div class="card">
+        <h2>People with access</h2>
+        <table>
+          <thead><tr><th>Person</th><th>Role</th><th>Status</th><th></th></tr></thead>
+          <tbody id="staff-rows"></tbody>
+        </table>
+        <h2 style="margin-top:26px;font-size:16px">Pending invitations</h2>
+        <table><tbody id="invite-rows"></tbody></table>
+      </div>
+    </section>
+
+    <section data-panel="email" class="hidden">
+      <form class="card" id="email-form">
+        <h2>Email connection</h2>
+        <p class="hint">Connect a sending service so the site can email staff and supporters. This uses Resend — create an API key at resend.com, then paste it here.</p>
+        <div class="row">
+          <div>
+            <label for="email.provider">Service</label>
+            <select id="email.provider" name="email.provider"><option value="resend">Resend</option></select>
+          </div>
+          <div>
+            <label for="email.from_name">From name</label>
+            <input type="text" id="email.from_name" name="email.from_name">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="email.from_address">From address</label>
+            <input type="email" id="email.from_address" name="email.from_address" placeholder="hello@yourshelter.org">
+          </div>
+          <div>
+            <label for="email.reply_to">Reply-to (optional)</label>
+            <input type="email" id="email.reply_to" name="email.reply_to">
+          </div>
+        </div>
+        <label for="email.api_key">API key</label>
+        <input type="password" id="email.api_key" name="email.api_key" placeholder="re_…" autocomplete="off">
+        <p class="hint" id="email-key-hint" style="margin-top:6px"></p>
+        <div class="actions">
+          <button class="primary" type="submit">Save email settings</button>
+          <button class="ghost" type="button" id="email-test">Send a test email</button>
+          <span class="status" data-status="email"></span>
+        </div>
+      </form>
+    </section>
+
+    <section data-panel="cloudflare" class="hidden">
+      <form class="card" id="cf-form">
+        <h2>Cloudflare security</h2>
+        <p class="hint">Paste a Cloudflare API token with Zone:Read so this area can confirm the connection and show the zone status. The token is stored server-side and never shown again.</p>
+        <label for="cloudflare.account_id">Account ID (optional)</label>
+        <input type="text" id="cloudflare.account_id" name="cloudflare.account_id">
+        <label for="cloudflare.zone_id">Zone ID</label>
+        <input type="text" id="cloudflare.zone_id" name="cloudflare.zone_id">
+        <label for="cloudflare.api_token">API token</label>
+        <input type="password" id="cloudflare.api_token" name="cloudflare.api_token" placeholder="Cloudflare API token" autocomplete="off">
+        <p class="hint" id="cf-key-hint" style="margin-top:6px"></p>
+        <div class="actions">
+          <button class="primary" type="submit">Save Cloudflare settings</button>
+          <button class="ghost" type="button" id="cf-check">Test connection</button>
+          <span class="status" data-status="cloudflare"></span>
+        </div>
+      </form>
+    </section>
+
+    <section data-panel="account" class="hidden">
+      <div class="card">
+        <h2>My account</h2>
+        <p class="hint">You are signed in with Freebuff; your name and photo come from that account.</p>
+        <p id="account-detail"></p>
+        <form method="post" action="/auth/freebuff/signout"><button class="ghost" type="submit">Sign out</button></form>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const state = { me: null, settings: null, role: null, permissions: {} };
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+function toast(message) {
+  const el = $('#toast');
+  el.textContent = message;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+function setStatus(name, message, kind) {
+  const el = $(`[data-status="${name}"]`);
+  if (!el) return;
+  el.textContent = message || '';
+  el.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(path, { credentials: 'same-origin', ...options });
+  const type = res.headers.get('content-type') || '';
+  const body = type.includes('json') ? await res.json().catch(() => ({})) : await res.text();
+  if (!res.ok) throw Object.assign(new Error((body && body.error) || `Request failed (${res.status})`), { body, status: res.status });
+  return body;
+}
+
+function show(view) {
+  for (const id of ['booting', 'signin', 'notstaff', 'app']) $('#' + id).classList.toggle('hidden', id !== view);
+}
+
+async function boot() {
+  state.me = await api('/api/me');
+  if (!state.me.signedIn) return show('signin');
+  if (!state.me.member) {
+    $('#notstaff-who').textContent = state.me.user?.email ? `Signed in as ${state.me.user.email}.` : '';
+    return show('notstaff');
+  }
+  state.role = state.me.role;
+  state.permissions = state.me.permissions || {};
+  $('#who-name').textContent = state.me.user.name || state.me.user.email || 'Staff';
+  $('#who-role').textContent = state.role;
+  $('#account-detail').textContent = `${state.me.user.email || ''} — ${state.role}`;
+  $$('nav.side button[data-manage]').forEach((b) => b.classList.toggle('hidden', !state.permissions.manageStaff));
+  $$('nav.side button[data-settings]').forEach((b) => b.classList.toggle('hidden', !state.permissions.editSettings));
+  show('app');
+  await loadSettings();
+  await loadStaff();
+  go(location.hash.replace('#', '') || 'site');
+}
+
+function go(page) {
+  const panel = $(`[data-panel="${page}"]`);
+  if (!panel) return;
+  $$('section[data-panel]').forEach((s) => s.classList.add('hidden'));
+  panel.classList.remove('hidden');
+  $$('nav.side button').forEach((b) => b.toggleAttribute('aria-current', b.dataset.page === page));
+  const titles = { site: 'Site & header', logo: 'Logo', staff: 'Staff & access', email: 'Email connection', cloudflare: 'Cloudflare security', account: 'My account' };
+  $('#page-title').textContent = titles[page] || 'Staff area';
+  history.replaceState(null, '', '#' + page);
+}
+
+async function loadSettings() {
+  const data = await api('/api/settings');
+  state.settings = data.settings;
+  for (const form of ['#site-form', '#email-form', '#cf-form']) {
+    for (const input of $$('input, textarea, select', $(form))) {
+      const key = input.name;
+      if (!key || !(key in data.settings)) continue;
+      const value = data.settings[key];
+      if (input.type === 'checkbox') input.checked = value === 'true';
+      else if (input.type === 'password') input.value = '';
+      else input.value = value ?? '';
+    }
+  }
+  $('#email-key-hint').textContent = data.settings['email.api_key__set'] ? 'A key is saved. Leave blank to keep it.' : 'No key saved yet.';
+  $('#cf-key-hint').textContent = data.settings['cloudflare.api_token__set'] ? 'A token is saved. Leave blank to keep it.' : 'No token saved yet.';
+}
+
+async function save(form, name, extra = {}) {
+  const body = { ...extra };
+  for (const input of $$('input, textarea, select', $(form))) {
+    if (!input.name) continue;
+    if (input.type === 'checkbox') body[input.name] = input.checked ? 'true' : 'false';
+    else if (input.type === 'password') { if (input.value) body[input.name] = input.value; }
+    else body[input.name] = input.value;
+  }
+  setStatus(name, 'Saving…');
+  try {
+    await api('/api/settings', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    setStatus(name, 'Saved', 'ok');
+    toast('Saved');
+    await loadSettings();
+  } catch (err) {
+    setStatus(name, err.message, 'err');
+  }
+}
+
+$('#site-form').addEventListener('submit', (e) => { e.preventDefault(); save('#site-form', 'site'); });
+$('#email-form').addEventListener('submit', (e) => { e.preventDefault(); save('#email-form', 'email'); });
+$('#cf-form').addEventListener('submit', (e) => { e.preventDefault(); save('#cf-form', 'cloudflare'); });
+
+$('#logo-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const file = $('#logo-file').files[0];
+  if (!file) return setStatus('logo', 'Choose an image first.', 'err');
+  const data = new FormData();
+  data.append('logo', file);
+  setStatus('logo', 'Uploading…');
+  try {
+    await api('/api/logo', { method: 'POST', body: data });
+    setStatus('logo', 'Logo updated', 'ok');
+    $('#logo-img').src = '/api/logo?t=' + Date.now();
+    toast('Logo updated');
+  } catch (err) {
+    setStatus('logo', err.message, 'err');
+  }
+});
+
+$('#email-test').addEventListener('click', async () => {
+  setStatus('email', 'Sending…');
+  try {
+    const res = await api('/api/email/test', { method: 'POST' });
+    setStatus('email', `Test sent to ${res.sentTo}`, 'ok');
+  } catch (err) {
+    setStatus('email', err.message + (err.body?.detail ? ` (${String(err.body.detail).slice(0, 140)})` : ''), 'err');
+  }
+});
+
+$('#cf-check').addEventListener('click', async () => {
+  setStatus('cloudflare', 'Checking…');
+  try {
+    const res = await api('/api/cloudflare/check', { method: 'POST' });
+    setStatus('cloudflare', res.zone ? `Connected — ${res.zone.name} (${res.zone.status})` : `Token ${res.token}`, 'ok');
+  } catch (err) {
+    setStatus('cloudflare', err.message, 'err');
+  }
+});
+
+async function loadStaff() {
+  if (!state.permissions.manageStaff) return;
+  const data = await api('/api/staff');
+  $('#staff-rows').innerHTML = '';
+  for (const person of data.users) {
+    const tr = document.createElement('tr');
+    const nameCell = document.createElement('td');
+    nameCell.innerHTML = '<strong></strong><div class="mono"></div>';
+    nameCell.querySelector('strong').textContent = person.name || person.email || '(no name)';
+    nameCell.querySelector('.mono').textContent = person.email || '';
+    const roleCell = document.createElement('td');
+    if (person.role === 'owner') {
+      roleCell.innerHTML = '<span class="pill">Owner</span>';
+    } else {
+      const sel = document.createElement('select');
+      for (const r of ['editor', 'admin']) {
+        const opt = document.createElement('option');
+        opt.value = r; opt.textContent = r[0].toUpperCase() + r.slice(1);
+        opt.selected = person.role === r;
+        sel.append(opt);
+      }
+      sel.addEventListener('change', async () => {
+        try {
+          await api(`/api/staff/${person.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ role: sel.value }) });
+          toast('Role updated');
+        } catch (err) { toast(err.message); await loadStaff(); }
+      });
+      roleCell.append(sel);
+    }
+    const statusCell = document.createElement('td');
+    statusCell.innerHTML = `<span class="pill ${person.status === 'active' ? '' : 'off'}">${person.status}</span>`;
+    const actionCell = document.createElement('td');
+    if (person.role !== 'owner') {
+      const toggle = document.createElement('button');
+      toggle.className = 'ghost';
+      toggle.textContent = person.status === 'active' ? 'Suspend' : 'Restore';
+      toggle.addEventListener('click', async () => {
+        try {
+          await api(`/api/staff/${person.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: person.status === 'active' ? 'suspended' : 'active' }) });
+          toast('Access updated'); await loadStaff();
+        } catch (err) { toast(err.message); }
+      });
+      const remove = document.createElement('button');
+      remove.className = 'danger';
+      remove.textContent = 'Remove';
+      remove.style.marginLeft = '8px';
+      remove.addEventListener('click', async () => {
+        if (!confirm(`Remove ${person.email} from staff?`)) return;
+        try { await api(`/api/staff/${person.id}`, { method: 'DELETE' }); toast('Removed'); await loadStaff(); }
+        catch (err) { toast(err.message); }
+      });
+      actionCell.append(toggle, remove);
+    }
+    tr.append(nameCell, roleCell, statusCell, actionCell);
+    $('#staff-rows').append(tr);
+  }
+  const inviteRows = $('#invite-rows');
+  inviteRows.innerHTML = '';
+  if (!data.invites.length) inviteRows.innerHTML = '<tr><td class="status">No pending invitations.</td></tr>';
+  for (const invite of data.invites) {
+    const tr = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.innerHTML = '<span></span> <span class="pill"></span>';
+    cell.querySelector('span').textContent = invite.email;
+    cell.querySelector('.pill').textContent = 'invited · ' + invite.role;
+    const actions = document.createElement('td');
+    const cancel = document.createElement('button');
+    cancel.className = 'danger'; cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', async () => {
+      try { await api(`/api/invites/${encodeURIComponent(invite.email)}`, { method: 'DELETE' }); toast('Invitation cancelled'); await loadStaff(); }
+      catch (err) { toast(err.message); }
+    });
+    actions.append(cancel);
+    tr.append(cell, actions);
+    inviteRows.append(tr);
+  }
+}
+
+$('#staff-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  setStatus('staff', 'Adding…');
+  try {
+    await api('/api/staff', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: $('#staff-email').value, role: $('#staff-role').value }),
+    });
+    $('#staff-email').value = '';
+    setStatus('staff', 'Added — they can sign in now', 'ok');
+    await loadStaff();
+  } catch (err) {
+    setStatus('staff', err.message, 'err');
+  }
+});
+
+$$('nav.side button').forEach((b) => b.addEventListener('click', () => go(b.dataset.page)));
+
+boot().catch((err) => {
+  $('#booting').innerHTML = `<div class="card"><h1>Could not open the staff area</h1><p>${err.message}</p></div>`;
+});
+</script>
+</body>
+</html>

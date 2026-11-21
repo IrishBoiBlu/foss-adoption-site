@@ -1,0 +1,14 @@
+{
+  "entrypoint": "worker.js",
+  "compatibilityDate": "2026-11-21",
+  "compatibilityFlags": ["nodejs_compat"],
+  "modules": [
+    {
+      "name": "worker.js",
+      "type": "esm",
+      "path": "./dist/worker.js"
+    }
+  ],
+  "assetsDirectory": "./public",
+  "spa": true
+}

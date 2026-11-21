@@ -167,4 +167,84 @@
       list.setAttribute("data-filter", match === "all" ? "all" : match);
     });
   }
+
+  /* --- Staff-managed settings: site name, logo, announcement, contact --- */
+  var ADMIN_ORIGIN = "https://shelter-staff-admin-0xjqut-preview.freebuff.site";
+
+  function applyStaffSettings(cfg) {
+    var prefix = "/";
+    var about = document.querySelector('a[href$="/about"]');
+    if (about) prefix = about.getAttribute("href").replace(/about$/, "");
+
+    var nameEls = document.querySelectorAll("header .font-display, footer .font-display");
+    var oldName = nameEls.length ? nameEls[0].textContent.trim() : "";
+    if (cfg.siteName) {
+      Array.prototype.forEach.call(nameEls, function (el) {
+        el.textContent = cfg.siteName;
+      });
+      if (oldName && document.title.indexOf(oldName) !== -1) {
+        document.title = document.title.split(oldName).join(cfg.siteName);
+      }
+    }
+
+    if (cfg.logoUrl) {
+      var abs = /^https?:|^\/\//.test(cfg.logoUrl) ? cfg.logoUrl : ADMIN_ORIGIN + cfg.logoUrl;
+      var probe = new Image();
+      probe.onload = function () {
+        var mark = document.querySelector('header a[href] > span[aria-hidden="true"]');
+        if (!mark) return;
+        mark.textContent = "";
+        mark.style.border = "0";
+        mark.style.background = "transparent";
+        mark.style.width = "auto";
+        mark.style.height = "auto";
+        var img = document.createElement("img");
+        img.src = abs;
+        img.alt = "";
+        img.style.cssText = "height:2.6rem;width:auto;max-width:10rem;object-fit:contain;display:block";
+        mark.appendChild(img);
+      };
+      probe.src = abs;
+    }
+
+    if (cfg.announcement) {
+      var bar = document.createElement("div");
+      bar.setAttribute("role", "status");
+      bar.textContent = cfg.announcement;
+      bar.style.cssText =
+        "position:relative;z-index:60;background:#22201d;color:#fffdf8;text-align:center;padding:10px 20px;" +
+        "font:600 12.5px/1.45 system-ui,-apple-system,'Segoe UI',sans-serif;letter-spacing:.05em";
+      document.body.insertBefore(bar, document.body.firstChild);
+    }
+
+    if (cfg.contactEmail) {
+      Array.prototype.forEach.call(document.querySelectorAll('a[href^="mailto:"]'), function (a) {
+        a.setAttribute("href", "mailto:" + cfg.contactEmail);
+        a.textContent = cfg.contactEmail;
+      });
+    }
+
+    var heroText = document.querySelector('[data-testid="hero-subtext"]');
+    if (heroText && cfg.tagline) heroText.textContent = cfg.tagline;
+
+    var heroCta = document.querySelector('[data-testid="hero-adopt-cta"]');
+    if (heroCta) {
+      if (cfg.ctaLabel) {
+        var arrow = heroCta.querySelector("svg");
+        heroCta.textContent = cfg.ctaLabel;
+        if (arrow) heroCta.appendChild(arrow);
+      }
+      if (cfg.ctaUrl) {
+        heroCta.setAttribute(
+          "href",
+          cfg.ctaUrl.charAt(0) === "/" ? prefix + cfg.ctaUrl.slice(1) : cfg.ctaUrl
+        );
+      }
+    }
+  }
+
+  fetch(ADMIN_ORIGIN + "/api/public-config", { credentials: "omit" })
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (cfg) { if (cfg) applyStaffSettings(cfg); })
+    .catch(function () { /* keep the built-in content */ });
 })();

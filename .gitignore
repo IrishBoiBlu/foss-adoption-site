@@ -4,3 +4,6 @@ sync.log
 .sync.lock
 scheduler.pid
 .deploy/
+.wrangler/
+node_modules/
+dist/
