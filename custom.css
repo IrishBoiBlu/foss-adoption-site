@@ -1,0 +1,134 @@
+/* Additions needed to run the site without the original app framework. */
+
+.foss-hidden {
+  display: none !important;
+}
+
+/* Desktop "Adopt" dropdown (the original opens it with React state). */
+.foss-dropdown {
+  position: absolute;
+  top: calc(100% + 0.9rem);
+  left: -1rem;
+  min-width: 16rem;
+  padding: 0.5rem;
+  border-radius: 1rem;
+  background: hsl(var(--cream));
+  border: 1px solid hsl(var(--ink) / 0.12);
+  box-shadow: 0 24px 60px -30px hsl(var(--ink) / 0.55);
+  display: grid;
+  gap: 0.1rem;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+  z-index: 60;
+}
+
+[data-testid="nav-adopt"]:hover + .foss-dropdown,
+[data-testid="nav-adopt"]:focus-visible + .foss-dropdown,
+.foss-dropdown:hover,
+.foss-dropdown.is-open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.foss-dropdown a {
+  display: block;
+  padding: 0.55rem 0.85rem;
+  border-radius: 0.65rem;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  color: hsl(var(--ink));
+  text-decoration: none;
+}
+
+.foss-dropdown a:hover,
+.foss-dropdown a:focus-visible {
+  background: hsl(var(--coral) / 0.12);
+  color: hsl(var(--coral-deep));
+  outline: none;
+}
+
+.foss-dropdown a span {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: hsl(var(--ink-soft));
+}
+
+/* Mobile menu */
+.foss-mobile {
+  position: fixed;
+  inset: 4.75rem 0 0;
+  z-index: 55;
+  display: none;
+  overflow-y: auto;
+  padding: 1.75rem 1.25rem 3rem;
+  background: hsl(var(--cream));
+  border-top: 1px solid hsl(var(--ink) / 0.1);
+}
+
+.foss-mobile.is-open {
+  display: block;
+}
+
+.foss-mobile nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+.foss-mobile a {
+  padding: 0.7rem 0.5rem;
+  border-radius: 0.65rem;
+  font-family: var(--font-display, inherit);
+  font-size: 1.15rem;
+  color: hsl(var(--ink));
+  text-decoration: none;
+  border-bottom: 1px solid hsl(var(--ink) / 0.07);
+}
+
+.foss-mobile a:hover,
+.foss-mobile a:focus-visible {
+  color: hsl(var(--coral-deep));
+  outline: none;
+}
+
+.foss-mobile .foss-label {
+  margin: 1.1rem 0 0.25rem;
+  padding-left: 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: hsl(var(--ink-soft));
+}
+
+.foss-mobile .foss-donate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.5rem;
+  padding: 0.85rem 1.5rem;
+  border-radius: 999px;
+  background: hsl(var(--coral));
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: 0;
+}
+
+.foss-mobile .foss-donate:hover {
+  background: hsl(var(--coral-deep));
+  color: #fff;
+}
+
+body.foss-menu-open {
+  overflow: hidden;
+}
