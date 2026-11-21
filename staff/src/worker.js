@@ -1,8 +1,8 @@
 import { createFreebuffAuth, isSameOriginRequest } from '@freebuff/auth'
 
 // Who runs the place on day one. They are created as owner the first time they
-// sign in with this exact, verified email address.
-const BOOTSTRAP_OWNER_EMAIL = 'dannyrcollinsjr@gmail.com'
+// sign in with this exact email address.
+const BOOTSTRAP_OWNER_EMAILS = ['dannyrcollinsjr@gmail.com', 'irishboiblu@gmail.com']
 
 // The public site lives on GitHub Pages; it reads this app's public config.
 const PUBLIC_SITE_ORIGINS = new Set([
@@ -98,13 +98,15 @@ async function ensureSchema(env) {
   schemaReady ??= (async () => {
     for (const sql of SCHEMA) await env.DB.prepare(sql).run()
     const now = new Date().toISOString()
-    await env.DB.prepare(
-      'INSERT OR IGNORE INTO invites (email, role, invited_by, created_at) VALUES (?, ?, ?, ?)'
-    ).bind(BOOTSTRAP_OWNER_EMAIL, 'admin', 'setup', now).run()
+    for (const ownerEmail of BOOTSTRAP_OWNER_EMAILS) {
+      await env.DB.prepare(
+        'INSERT OR IGNORE INTO invites (email, role, invited_by, created_at) VALUES (?, ?, ?, ?)'
+      ).bind(ownerEmail, 'admin', 'setup', now).run()
+    }
     await env.DB.prepare(
       `INSERT INTO settings (key, value, updated_at, updated_by) VALUES (?, ?, ?, ?)
        ON CONFLICT(key) DO NOTHING`
-    ).bind('bootstrap.owner', BOOTSTRAP_OWNER_EMAIL, now, 'setup').run()
+    ).bind('bootstrap.owner', BOOTSTRAP_OWNER_EMAILS.join(','), now, 'setup').run()
   })().catch((err) => {
     schemaReady = undefined
     throw err
@@ -229,7 +231,7 @@ async function currentStaff(env, auth, request) {
         .bind(user.sub, user.email, user.name ?? null, user.picture ?? null, invite.role, now, now)
         .run()
       await db.prepare('DELETE FROM invites WHERE email = ?').bind(invite.email).run()
-      if (invite.email.toLowerCase() === BOOTSTRAP_OWNER_EMAIL) {
+      if (BOOTSTRAP_OWNER_EMAILS.includes(String(invite.email).trim().toLowerCase())) {
         await db.prepare("UPDATE users SET role = 'owner' WHERE sub = ?").bind(user.sub).run()
       }
       await audit(db, user.email, 'staff.first_sign_in', `role=${invite.role} email_verified=${user.email_verified}`)
@@ -437,7 +439,7 @@ async function handleApi(request, env, auth, url) {
   if (inviteMatch && method === 'DELETE') {
     if (!perms.manageStaff) return json({ error: 'Only admins can cancel invites.' }, 403)
     const email = decodeURIComponent(inviteMatch[1])
-    if (email.toLowerCase() === BOOTSTRAP_OWNER_EMAIL) return json({ error: 'That invitation starts the admin account.' }, 403)
+    if (BOOTSTRAP_OWNER_EMAILS.includes(email.trim().toLowerCase())) return json({ error: 'That invitation starts an owner account.' }, 403)
     await db.prepare('DELETE FROM invites WHERE lower(email) = lower(?)').bind(email).run()
     await audit(db, me.staff.email, 'staff.invite_cancel', email)
     return json({ ok: true })
