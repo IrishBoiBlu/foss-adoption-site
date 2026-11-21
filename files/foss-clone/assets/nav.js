@@ -248,3 +248,77 @@
     .then(function (cfg) { if (cfg) applyStaffSettings(cfg); })
     .catch(function () { /* keep the built-in content */ });
 })();
+
+/* --- Paw-print trail up the left edge of the homepage --- */
+(function () {
+  "use strict";
+
+  if (!document.querySelector('[data-testid="hero"]')) return;
+  if (document.querySelector(".foss-paw-trail")) return;
+
+  var PATTERN = 340;
+  var COPIES = 3;
+  var STEP = PATTERN / 8;
+  var PAW =
+    '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">' +
+    '<ellipse cx="7" cy="7.4" rx="2.1" ry="2.7"></ellipse>' +
+    '<ellipse cx="12" cy="5.8" rx="2.1" ry="2.9"></ellipse>' +
+    '<ellipse cx="17" cy="7.4" rx="2.1" ry="2.7"></ellipse>' +
+    '<ellipse cx="20.2" cy="11.8" rx="1.8" ry="2.2"></ellipse>' +
+    '<ellipse cx="3.8" cy="11.8" rx="1.8" ry="2.2"></ellipse>' +
+    '<path d="M12 11.6c3.2 0 6.2 2.6 6.2 5.3 0 2-1.7 3.3-3.6 3.3-1.1 0-1.9-.4-2.6-.4s-1.5.4-2.6.4c-1.9 0-3.6-1.3-3.6-3.3 0-2.7 3-5.3 6.2-5.3Z"></path>' +
+    "</svg>";
+
+  var trail = document.createElement("div");
+  trail.className = "foss-paw-trail";
+  trail.setAttribute("aria-hidden", "true");
+
+  var track = document.createElement("div");
+  track.className = "foss-paw-track";
+  trail.appendChild(track);
+
+  for (var copy = 0; copy < COPIES; copy++) {
+    for (var i = 0; i < 8; i++) {
+      var wide = i % 2 === 1;
+      var paw = document.createElement("span");
+      paw.className = wide ? "foss-paw foss-paw-wide" : "foss-paw";
+      var size = 20 + ((i * 5 + copy * 3) % 5) * 3;
+      paw.style.top = copy * PATTERN + i * STEP + "px";
+      paw.style.left = (wide ? 36 : 12) + ((i + copy) % 3) * 4 + "px";
+      paw.style.width = size + "px";
+      paw.style.height = size + "px";
+      paw.style.opacity = (0.18 + ((i * 3) % 4) * 0.05).toFixed(2);
+      paw.style.transform = "rotate(" + (i % 3 - 1) * 14 + "deg)";
+      paw.innerHTML = PAW;
+      track.appendChild(paw);
+    }
+  }
+
+  document.body.appendChild(trail);
+
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  function pageTop() {
+    return window.pageYOffset || document.documentElement.scrollTop || 0;
+  }
+
+  var shown = pageTop();
+  var target = shown;
+  var frame = 0;
+
+  function paint() {
+    frame = 0;
+    shown += (target - shown) * 0.2;
+    var shift = shown * 0.5;
+    track.style.transform = "translate3d(0," + -(shift % PATTERN) + "px,0)";
+    if (Math.abs(target - shown) > 0.4) frame = window.requestAnimationFrame(paint);
+  }
+
+  function onScroll() {
+    target = pageTop();
+    if (!frame) frame = window.requestAnimationFrame(paint);
+  }
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  paint();
+})();
