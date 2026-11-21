@@ -169,7 +169,7 @@
   }
 
   /* --- Staff-managed settings: site name, logo, announcement, contact --- */
-  var ADMIN_ORIGIN = "https://shelter-staff-admin-0xjqut-preview.freebuff.site";
+  var ADMIN_ORIGIN = "https://shelter-staff-admin-0xjqut.freebuff.site";
 
   function applyStaffSettings(cfg) {
     var prefix = "/";
