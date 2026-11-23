@@ -199,7 +199,7 @@ STAFF_INDEX = r'''<!doctype html>
 </div>
 <div class="staff-panel">
 <p><strong>Adoptable pets</strong> refresh on their own every 30 minutes &mdash; nothing to update by hand.</p>
-<p><strong>Sign in with Freebuff</strong>, using the same account an admin added for you.</p>
+<p><strong>Sign in with your email and password</strong>, then the 6-digit code we send you.</p>
 <p><strong>Need access?</strong> Ask an admin to add your email address to the staff list.</p>
 </div>
 </div>
