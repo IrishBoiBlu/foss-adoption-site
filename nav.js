@@ -192,7 +192,11 @@
       var probe = new Image();
       probe.onload = function () {
         var mark = document.querySelector('header a[href] > span[aria-hidden="true"]');
-        if (!mark) return;
+        if (!mark) {
+          var baked = document.querySelector("header a[href] > img");
+          if (baked) baked.src = abs;
+          return;
+        }
         mark.textContent = "";
         mark.style.border = "0";
         mark.style.background = "transparent";

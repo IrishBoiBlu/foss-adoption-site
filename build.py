@@ -46,6 +46,21 @@ REMOTE_IMG = re.compile(
 
 url_map = {}
 
+# The live site's header swaps its paw placeholder for the shelter wordmark once
+# React hydrates. A static copy never hydrates, so the wordmark is baked in here.
+LOGO_URL = (
+    "https://assets.macaly-user-data.dev/m43a1wmvbbm0ri6tminvgjyz/"
+    "nwd1rmmqmdldp432j1rixfdd/ca3-VLgKY25d95WQNP_xe/generated-l0mSlZ_B.png"
+)
+LOGO_LOCAL = "/assets/img/header-logo.png"
+HEADER_MARK = re.compile(
+    r'(<a class="flex items-center gap-3[^"]*"[^>]*>).*?(</a>)', re.S
+)
+HEADER_LOGO = (
+    '<img src="' + LOGO_LOCAL + '" alt="" aria-hidden="true" '
+    'class="h-11 w-auto max-w-[9rem] shrink-0 object-contain"/>'
+)
+
 
 def local_image(match):
     raw = match.group(0)
@@ -68,6 +83,18 @@ def local_image(match):
     return local
 
 
+def ensure_logo():
+    dest = os.path.join(IMGDIR, "header-logo.png")
+    if os.path.exists(dest) and os.path.getsize(dest) > 1000:
+        return
+    res = subprocess.run(
+        ["curl", "-sS", "-L", "-m", "60", "-o", dest, "-w", "%{http_code}", LOGO_URL],
+        capture_output=True, text=True,
+    )
+    if res.stdout.strip() != "200" or os.path.getsize(dest) < 1000:
+        print("  !! logo failed", res.stdout, LOGO_URL)
+
+
 def transform(page):
     page = re.sub(r"<script\b[^>]*>.*?</script>", "", page, flags=re.S | re.I)
     page = re.sub(r"<script\b[^>]*/>", "", page, flags=re.I)
@@ -76,6 +103,7 @@ def transform(page):
     page = re.sub(r'<link rel="manifest"[^>]*>', "", page)
     page = page.replace("/assets/index-BIu1Q0pE.css", "/assets/site.css")
     page = REMOTE_IMG.sub(local_image, page)
+    page = HEADER_MARK.sub(lambda m: m.group(1) + HEADER_LOGO + m.group(2), page, count=1)
     page = page.replace(
         "</head>", '<link rel="stylesheet" href="/assets/custom.css"/></head>'
     )
@@ -111,6 +139,7 @@ def main():
     os.makedirs(IMGDIR, exist_ok=True)
 
     shutil.copyfile(os.path.join(REF, "index.css"), os.path.join(ASSETS, "site.css"))
+    ensure_logo()
 
     pages = dict(ROUTES)
     for fn in sorted(os.listdir(os.path.join(REF, "pages", "pets"))):
