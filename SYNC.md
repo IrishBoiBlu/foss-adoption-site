@@ -31,9 +31,11 @@ Pets marked not adoptable in ShelterLuv are left out of the site.
 
 ## Scheduled on GitHub (always on)
 
-`.github/workflows/sync.yml` runs the sync on GitHub's servers every 30 minutes,
-commits the refreshed pages, and publishes them to GitHub Pages. It needs no
-machine of yours to stay awake.
+`.github/workflows/sync.yml` runs the sync on GitHub's servers every 30 minutes
+and publishes the refreshed pages twice: to Hostinger over FTP, which is what
+`foss.bluhuskyinc.com` serves, and to GitHub Pages as a fallback. It needs no
+machine of yours to stay awake. See `HOSTINGER.md` for the FTP details it uses
+and the one-time hPanel setup.
 
 To turn it on, the repository needs two settings under **Settings**:
 
@@ -44,7 +46,9 @@ To turn it on, the repository needs two settings under **Settings**:
 `deploy_pages.py` stages the site for Pages and rewrites the root-absolute
 links (`/assets/site.css`) to include the repository path, so the site works at
 `https://<user>.github.io/<repo>/`. On a `<user>.github.io` repository it leaves
-them alone.
+them alone. `deploy_hostinger.py` reuses the same staging with the links left at
+the domain root and writes `files/foss-site-public_html.zip`; `deploy_ftp.py`
+uploads the result.
 
 GitHub's scheduler is best-effort: a run can start a few minutes late when
 their queue is busy. Scheduled workflows also pause after 60 days with no
