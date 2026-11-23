@@ -517,7 +517,7 @@ async function handleApi(request, env, url) {
     const body = await request.json().catch(() => null)
     const email = String(body?.email ?? '').trim().toLowerCase()
     const password = String(body?.password ?? '')
-    if (!email || !password) return json({ error: 'Enter your email and password.' }, 400)
+    if (!email) return json({ error: 'Enter your email first.' }, 400)
     if (await tooManyFailures(db, `login:${email}`)) {
       return json({ error: `Too many tries. Wait ${FAILURE_WINDOW_MINUTES} minutes and try again.` }, 429)
     }
@@ -535,6 +535,7 @@ async function handleApi(request, env, url) {
       // email is connected), so there is nothing to compare yet.
       return json({ step: 'setup', email })
     }
+    if (!password) return json({ error: 'Enter your password.' }, 400)
     if (!(await checkPassword(password, user.password_hash))) {
       await noteFailure(db, `login:${email}`)
       await audit(db, email, 'auth.failed', 'wrong password')
@@ -566,10 +567,12 @@ async function handleApi(request, env, url) {
     if (!user && !invite) return json({ error: 'That email is not on the staff list. Ask an owner to add you.' }, 401)
     if (user && user.status !== 'active') return json({ error: 'This account is paused. Ask an owner.' }, 403)
     const settings = await readSettings(db)
-    if (!emailConnected(settings)) {
-      return json({ error: 'Email is not connected and tested yet, so no code can be sent. An owner can set that up in the staff area.' }, 400)
-    }
     const purpose = user && user.password_hash ? 'reset' : 'setup'
+    if (!emailConnected(settings)) {
+      // A first password needs no code while email is off; a reset does.
+      if (purpose === 'setup') return json({ ok: true, purpose, sent: false })
+      return json({ error: 'Email is not connected and tested yet, so a reset code cannot be sent. An owner can set that up in the staff area.' }, 400)
+    }
     const issued = await issueCode(env, settings, email, purpose)
     if (!issued.ok) return json({ error: issued.error, detail: issued.detail }, 400)
     await audit(db, email, 'auth.code_sent', purpose)

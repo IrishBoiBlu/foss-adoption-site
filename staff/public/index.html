@@ -102,13 +102,14 @@
   <div class="card">
     <h1>Staff sign in</h1>
     <p class="hint">Friends of the Stokes Shelter</p>
+    <p class="hint" id="signin-first-time">First time here? Type your email and press Sign in. You'll be asked to choose a password.</p>
     <p id="signin-note" class="hint hidden"></p>
 
     <form id="login-form">
       <label for="login-email">Email</label>
       <input type="email" id="login-email" name="email" autocomplete="username" required>
       <label for="login-password">Password</label>
-      <input type="password" id="login-password" name="password" autocomplete="current-password" required>
+      <input type="password" id="login-password" name="password" autocomplete="current-password">
       <div class="actions">
         <button class="primary" type="submit">Sign in</button>
         <button class="ghost" type="button" id="forgot">Forgot password</button>
@@ -432,6 +433,7 @@ $('#login-form').addEventListener('submit', async (e) => {
     if (res.step === 'setup') {
       loginStatus('login-status', '');
       loginStatus('setup-status', '');
+      $('#setup-intro').textContent = 'This address is on the staff list but has no password yet. Choose one to get started.';
       showLoginStep('setup-form');
       $('#setup-password').focus();
       return;
@@ -449,9 +451,15 @@ $('#forgot').addEventListener('click', async () => {
   loginState.email = email;
   loginStatus('login-status', 'Sending a code…');
   try {
-    await api('/api/auth/start', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ email }) });
+    const res = await api('/api/auth/start', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ email }) });
     loginStatus('login-status', '');
-    loginStatus('setup-status', `We emailed a code to ${email}.`, 'ok');
+    if (res && res.purpose === 'setup') {
+      $('#setup-intro').textContent = 'This address is on the staff list but has no password yet. Choose one to get started.';
+      loginStatus('setup-status', '');
+    } else {
+      $('#setup-intro').textContent = 'Enter the code we emailed you, then choose a new password.';
+      loginStatus('setup-status', `We emailed a code to ${email}.`, 'ok');
+    }
     showLoginStep('setup-form');
   } catch (err) {
     loginStatus('login-status', err.message, 'err');
