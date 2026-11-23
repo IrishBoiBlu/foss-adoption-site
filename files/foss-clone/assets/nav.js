@@ -279,19 +279,19 @@
   var paws = [];
   for (var i = 0; i < COUNT; i++) {
     var wide = i % 2 === 1;
-    var size = 20 + (i % 5) * 3;
+    var size = 30 + (i % 5) * 5;
     var paw = document.createElement("span");
     paw.className = wide ? "foss-paw foss-paw-wide" : "foss-paw";
     // The first print sits at the bottom of the column, the last at the top,
     // so the trail fills upward as the page goes down.
-    paw.style.top = (92 - (i * 84) / (COUNT - 1)).toFixed(2) + "%";
-    paw.style.left = (wide ? 36 : 12) + (i % 3) * 4 + "px";
+    paw.style.top = (94 - (i * 88) / (COUNT - 1)).toFixed(2) + "%";
+    paw.style.left = (wide ? 48 : 14) + (i % 3) * 6 + "px";
     paw.style.width = size + "px";
     paw.style.height = size + "px";
     paw.style.opacity = "0";
     paw.innerHTML = PAW;
     track.appendChild(paw);
-    paws.push({ el: paw, at: (i / (COUNT - 1)) * 0.82, base: 0.22 + (i % 4) * 0.05 });
+    paws.push({ el: paw, at: (i / (COUNT - 1)) * 0.82, base: 0.55 + (i % 4) * 0.09 });
   }
 
   document.body.appendChild(trail);
@@ -308,7 +308,7 @@
       var seen = Math.min(1, Math.max(0, (progress - item.at) / FADE));
       item.el.style.opacity = (item.base * seen).toFixed(3);
       item.el.style.transform =
-        "translate3d(0," + (16 * (1 - seen)).toFixed(1) + "px,0) rotate(" + ((j % 3 - 1) * 14) + "deg)";
+        "translate3d(0," + (22 * (1 - seen)).toFixed(1) + "px,0) rotate(" + ((j % 2 ? 15 : -13)) + "deg)";
     }
   }
 

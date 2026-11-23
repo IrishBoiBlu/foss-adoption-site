@@ -133,20 +133,20 @@ body.foss-menu-open {
   overflow: hidden;
 }
 
-/* Paw-print trail down the left edge of the homepage. The prints drift upward
-   as the page scrolls, faster than the page itself, so the trail reads as a
-   set of tracks walking up the screen. */
+/* Paw-print trail up the left edge of the homepage. Prints fade in from the
+   bottom upward as the page is scrolled, so the trail reads as tracks walking
+   up the side of the page. Sized and brightened to stand out on the dark hero. */
 .foss-paw-trail {
   position: fixed;
   top: 0;
   bottom: 0;
   left: 0;
-  width: 92px;
+  width: 112px;
   overflow: hidden;
   pointer-events: none;
   z-index: 30;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 11%, #000 89%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 11%, #000 89%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 8%, #000 95%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 8%, #000 95%, transparent 100%);
 }
 
 .foss-paw-track {
@@ -160,8 +160,9 @@ body.foss-menu-open {
 .foss-paw {
   position: absolute;
   display: block;
-  color: hsl(var(--coral) / 0.9);
+  color: hsl(var(--coral));
   opacity: 0;
+  filter: drop-shadow(0 0 1px hsl(var(--cream) / 0.85)) drop-shadow(0 3px 9px hsl(var(--ink) / 0.55));
   will-change: opacity, transform;
 }
 
@@ -173,14 +174,14 @@ body.foss-menu-open {
 
 @media (max-width: 640px) {
   .foss-paw-trail {
-    width: 46px;
+    width: 52px;
   }
   .foss-paw-wide {
     display: none;
   }
   .foss-paw {
-    max-width: 24px;
-    max-height: 24px;
+    max-width: 34px;
+    max-height: 34px;
   }
 }
 
