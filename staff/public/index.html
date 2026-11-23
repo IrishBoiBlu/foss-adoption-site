@@ -100,10 +100,49 @@
 
 <div id="signin" class="center-card hidden">
   <div class="card">
-    <h1>Staff area</h1>
+    <h1>Staff sign in</h1>
     <p class="hint">Friends of the Stokes Shelter</p>
-    <p>This area is for shelter staff. Sign in with your Freebuff account — the same one your admin added.</p>
-    <a class="button primary" href="/auth/freebuff/signin?returnTo=/" style="display:inline-block;text-decoration:none">Sign in with Freebuff</a>
+    <p id="signin-note" class="hint hidden"></p>
+
+    <form id="login-form">
+      <label for="login-email">Email</label>
+      <input type="email" id="login-email" name="email" autocomplete="username" required>
+      <label for="login-password">Password</label>
+      <input type="password" id="login-password" name="password" autocomplete="current-password" required>
+      <div class="actions">
+        <button class="primary" type="submit">Sign in</button>
+        <button class="ghost" type="button" id="forgot">Forgot password</button>
+      </div>
+      <p class="status" id="login-status"></p>
+    </form>
+
+    <form id="code-form" class="hidden">
+      <p>We emailed a 6-digit code to <strong id="code-who"></strong>. Enter it below.</p>
+      <label for="login-code">Code</label>
+      <input id="login-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+      <div class="actions">
+        <button class="primary" type="submit">Continue</button>
+        <button class="ghost" type="button" id="code-resend">Send a new code</button>
+      </div>
+      <p class="status" id="code-status"></p>
+    </form>
+
+    <form id="setup-form" class="hidden">
+      <p id="setup-intro">This address is on the staff list but has no password yet. Choose one to get started.</p>
+      <p class="hint" id="setup-code-hint"></p>
+      <div id="setup-code-block">
+        <label for="setup-code">Code from your email</label>
+        <input id="setup-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+        <button class="ghost" type="button" id="setup-send">Email me a code</button>
+      </div>
+      <label for="setup-password">Password</label>
+      <input type="password" id="setup-password" name="password" autocomplete="new-password" required>
+      <div class="actions">
+        <button class="primary" type="submit">Save and sign in</button>
+        <button class="ghost" type="button" id="setup-back">Back</button>
+      </div>
+      <p class="status" id="setup-status"></p>
+    </form>
   </div>
 </div>
 
@@ -112,7 +151,7 @@
     <h1>You're signed in, but not on staff yet</h1>
     <p class="hint" id="notstaff-who"></p>
     <p>Ask the site owner to add this email address under <strong>Staff &amp; access</strong>.</p>
-    <form method="post" action="/auth/freebuff/signout"><button class="ghost" type="submit">Sign out</button></form>
+    <button class="ghost" type="button" data-signout>Sign out</button>
   </div>
 </div>
 
@@ -269,9 +308,9 @@
     <section data-panel="account" class="hidden">
       <div class="card">
         <h2>My account</h2>
-        <p class="hint">You are signed in with Freebuff; your name and photo come from that account.</p>
+        <p class="hint">You are signed in with the staff email and password set up for this site.</p>
         <p id="account-detail"></p>
-        <form method="post" action="/auth/freebuff/signout"><button class="ghost" type="submit">Sign out</button></form>
+        <button class="ghost" type="button" data-signout>Sign out</button>
       </div>
     </section>
   </main>
@@ -313,7 +352,12 @@ function show(view) {
 
 async function boot() {
   state.me = await api('/api/me');
-  if (!state.me.signedIn) return show('signin');
+  if (!state.me.signedIn) {
+    showLoginStep('login-form');
+    show('signin');
+    await refreshLoginState();
+    return;
+  }
   if (!state.me.member) {
     $('#notstaff-who').textContent = state.me.user?.email ? `Signed in as ${state.me.user.email}.` : '';
     return show('notstaff');
@@ -330,6 +374,165 @@ async function boot() {
   await loadStaff();
   go(location.hash.replace('#', '') || 'site');
 }
+
+/* --------------------------------------------------------------- sign in flow */
+
+const loginState = { email: '', password: '' };
+const JSON_HEADERS = { 'content-type': 'application/json' };
+
+function loginStatus(id, message, kind) {
+  const el = $('#' + id);
+  if (!el) return;
+  el.textContent = message || '';
+  el.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+function showLoginStep(step) {
+  for (const id of ['login-form', 'code-form', 'setup-form']) $('#' + id).classList.toggle('hidden', id !== step);
+}
+
+async function refreshLoginState() {
+  try {
+    const state = await api('/api/auth/state');
+    const note = $('#signin-note');
+    if (state.emailConnected) {
+      note.classList.add('hidden');
+    } else {
+      note.textContent = 'Email is not connected yet, so sign-in codes are paused. Once an owner connects email in the staff area, every sign-in also sends a 6-digit code.';
+      note.classList.remove('hidden');
+    }
+    $('#setup-code-block').classList.toggle('hidden', !state.emailConnected);
+    $('#setup-code-hint').textContent = state.emailConnected
+      ? 'Press “Email me a code”, type the code it sends, then choose your password.'
+      : 'Email is not connected yet, so no emailed code is needed for this first sign-in.';
+  } catch (err) {
+    // The sign-in form works without the note.
+  }
+}
+
+$('#login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  loginState.email = $('#login-email').value.trim().toLowerCase();
+  loginState.password = $('#login-password').value;
+  loginStatus('login-status', 'Checking…');
+  try {
+    const res = await api('/api/auth/login', {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ email: loginState.email, password: loginState.password }),
+    });
+    if (res.step === 'code') {
+      $('#code-who').textContent = loginState.email;
+      loginStatus('login-status', '');
+      loginStatus('code-status', '');
+      showLoginStep('code-form');
+      $('#login-code').focus();
+      return;
+    }
+    if (res.step === 'setup') {
+      loginStatus('login-status', '');
+      loginStatus('setup-status', '');
+      showLoginStep('setup-form');
+      $('#setup-password').focus();
+      return;
+    }
+    loginStatus('login-status', '');
+    await boot();
+  } catch (err) {
+    loginStatus('login-status', err.message, 'err');
+  }
+});
+
+$('#forgot').addEventListener('click', async () => {
+  const email = ($('#login-email').value || '').trim().toLowerCase();
+  if (!email) return loginStatus('login-status', 'Type your email above first, then press Forgot password.', 'err');
+  loginState.email = email;
+  loginStatus('login-status', 'Sending a code…');
+  try {
+    await api('/api/auth/start', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ email }) });
+    loginStatus('login-status', '');
+    loginStatus('setup-status', `We emailed a code to ${email}.`, 'ok');
+    showLoginStep('setup-form');
+  } catch (err) {
+    loginStatus('login-status', err.message, 'err');
+  }
+});
+
+$('#code-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  loginStatus('code-status', 'Checking…');
+  try {
+    await api('/api/auth/verify', {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ email: loginState.email, code: $('#login-code').value.trim() }),
+    });
+    loginStatus('code-status', '');
+    await boot();
+  } catch (err) {
+    loginStatus('code-status', err.message, 'err');
+  }
+});
+
+$('#code-resend').addEventListener('click', async () => {
+  loginStatus('code-status', 'Sending a new code…');
+  try {
+    // Signing in again with the password that was just accepted issues a fresh code.
+    await api('/api/auth/login', {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ email: loginState.email, password: loginState.password }),
+    });
+    loginStatus('code-status', 'A new code is on its way.', 'ok');
+  } catch (err) {
+    loginStatus('code-status', err.message, 'err');
+  }
+});
+
+$('#setup-send').addEventListener('click', async () => {
+  loginStatus('setup-status', 'Sending a code…');
+  try {
+    await api('/api/auth/start', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ email: loginState.email }) });
+    loginStatus('setup-status', `A code is on its way to ${loginState.email}.`, 'ok');
+  } catch (err) {
+    loginStatus('setup-status', err.message, 'err');
+  }
+});
+
+$('#setup-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  loginStatus('setup-status', 'Saving…');
+  try {
+    await api('/api/auth/set-password', {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        email: loginState.email,
+        code: $('#setup-code').value.trim(),
+        password: $('#setup-password').value,
+      }),
+    });
+    loginStatus('setup-status', '');
+    $('#setup-password').value = '';
+    $('#setup-code').value = '';
+    await boot();
+  } catch (err) {
+    loginStatus('setup-status', err.message, 'err');
+  }
+});
+
+$('#setup-back').addEventListener('click', () => showLoginStep('login-form'));
+
+$$('[data-signout]').forEach((button) =>
+  button.addEventListener('click', async () => {
+    try {
+      await api('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      // The session may already be gone; reloading still shows the sign-in screen.
+    }
+    location.reload();
+  })
+);
 
 function go(page) {
   const panel = $(`[data-panel="${page}"]`);
@@ -511,7 +714,7 @@ $('#staff-form').addEventListener('submit', async (e) => {
       body: JSON.stringify({ email: $('#staff-email').value, role: $('#staff-role').value }),
     });
     $('#staff-email').value = '';
-    setStatus('staff', 'Added — they can sign in now', 'ok');
+    setStatus('staff', 'Added — they can set a password with that email now', 'ok');
     await loadStaff();
   } catch (err) {
     setStatus('staff', err.message, 'err');
