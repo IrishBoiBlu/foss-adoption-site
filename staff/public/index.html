@@ -390,6 +390,8 @@ function loginStatus(id, message, kind) {
 
 function showLoginStep(step) {
   for (const id of ['login-form', 'code-form', 'setup-form']) $('#' + id).classList.toggle('hidden', id !== step);
+  // The sign-up notes only belong above the email and password boxes.
+  for (const id of ['signin-first-time', 'signin-note']) $('#' + id).classList.toggle('hidden', step !== 'login-form');
 }
 
 async function refreshLoginState() {
