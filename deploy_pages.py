@@ -15,9 +15,10 @@ import shutil
 SRC = "files/foss-clone"
 OUT = ".deploy"
 
-# The site is served from its own domain, so pages stay at the root. The CNAME
-# file tells GitHub Pages which domain to answer for.
-CUSTOM_DOMAIN = "foss.bluhuskyinc.com"
+# The site is served from its own domain once that domain points here, and then
+# pages must stay at the root with a CNAME file naming the domain. Left empty it
+# publishes the usual https://<user>.github.io/<repo>/ address instead.
+CUSTOM_DOMAIN = ""
 
 # Default to the repository name when running inside GitHub Actions.
 base = os.environ.get("BASE_PATH", "").strip()
