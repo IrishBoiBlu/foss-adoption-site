@@ -133,6 +133,38 @@ ADOPT_INDEX = """<!doctype html>
 """
 
 
+# Shelter staff land on the separate staff app, which shows the sign-in page.
+STAFF_APP = "https://shelter-staff-admin-0xjqut.freebuff.site/"
+STAFF_INDEX = '''<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="robots" content="noindex"/>
+<meta http-equiv="refresh" content="0; url=''' + STAFF_APP + '''"/>
+<link rel="canonical" href="''' + STAFF_APP + '''"/>
+<title>Staff sign in | Friends of the Stokes Shelter</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: #f7f4ee; color: #22201d; padding: 1.5rem;
+    font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .card { max-width: 26rem; padding: 2.5rem 2rem; text-align: center;
+    background: #fffdf8; border: 1px solid #e3ddd2; border-radius: 16px; }
+  h1 { font: 600 1.6rem/1.25 Georgia, "Iowan Old Style", serif; margin: 0 0 .4rem; }
+  p { margin: 0 0 1.4rem; color: #5c574f; }
+  a.button { display: inline-block; padding: .75rem 1.4rem; border-radius: 999px;
+    background: #2f5d50; color: #fff; text-decoration: none; font-weight: 600; }
+  small { display: block; margin-top: 1.2rem; color: #8a8377; }
+</style>
+</head><body>
+<main class="card">
+  <h1>Staff sign in</h1>
+  <p>Friends of the Stokes Shelter</p>
+  <p><a class="button" href="''' + STAFF_APP + '''">Continue to staff sign in</a></p>
+  <small>Taking you there now\u2026</small>
+</main>
+</body></html>
+'''
+
+
 def main():
     if os.path.exists(OUT):
         shutil.rmtree(OUT)
@@ -157,6 +189,9 @@ def main():
 
     # /adopt has no page of its own in the reference site; send it to the list.
     write_page("adopt", ADOPT_INDEX)
+
+    # /staff hands people to the staff admin app's sign-in page.
+    write_page("staff", STAFF_INDEX)
 
     for extra in ("favicon.svg",):
         subprocess.run(

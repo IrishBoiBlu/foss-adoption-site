@@ -2,7 +2,11 @@ import { createFreebuffAuth, isSameOriginRequest } from '@freebuff/auth'
 
 // Who runs the place on day one. They are created as owner the first time they
 // sign in with this exact email address.
-const BOOTSTRAP_OWNER_EMAILS = ['dannyrcollinsjr@gmail.com', 'irishboiblu@gmail.com']
+const BOOTSTRAP_OWNER_EMAILS = [
+  'dannyrcollinshr@gmail.com',
+  'dannyrcollinsjr@gmail.com',
+  'irishboiblu@gmail.com',
+]
 
 // The public site lives on GitHub Pages; it reads this app's public config.
 const PUBLIC_SITE_ORIGINS = new Set([
