@@ -171,6 +171,31 @@
   /* --- Staff-managed settings: site name, logo, announcement, contact --- */
   var ADMIN_ORIGIN = "https://shelter-staff-admin-0xjqut.freebuff.site";
 
+  /* Staff text for the page being viewed: heading and intro paragraph. */
+  function pageSlug() {
+    var parts = location.pathname.split("/").filter(Boolean);
+    var last = parts.length ? parts[parts.length - 1] : "";
+    if (!last || last === "foss-adoption-site" || last.indexOf(".") !== -1) return "home";
+    return last;
+  }
+
+  function applyPageCopy(pages) {
+    var copy = pages[pageSlug()];
+    if (!copy) return;
+    var heading =
+      document.querySelector('[data-testid="hero-heading"]') || document.querySelector("h1");
+    var intro = document.querySelector('[data-testid="hero-subtext"]');
+    if (!intro && heading) {
+      var box = heading.parentNode;
+      while (box && !intro) {
+        intro = box.querySelector ? box.querySelector("p") : null;
+        box = box.parentNode;
+      }
+    }
+    if (heading && copy.heading) heading.textContent = copy.heading;
+    if (intro && copy.intro) intro.textContent = copy.intro;
+  }
+
   function applyStaffSettings(cfg) {
     var prefix = "/";
     var about = document.querySelector('a[href$="/about"]');
@@ -220,6 +245,8 @@
         "font:600 12.5px/1.45 system-ui,-apple-system,'Segoe UI',sans-serif;letter-spacing:.05em";
       document.body.insertBefore(bar, document.body.firstChild);
     }
+
+    if (cfg.pages) applyPageCopy(cfg.pages);
 
     if (cfg.contactEmail) {
       Array.prototype.forEach.call(document.querySelectorAll('a[href^="mailto:"]'), function (a) {

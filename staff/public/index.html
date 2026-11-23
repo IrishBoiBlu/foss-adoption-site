@@ -161,6 +161,7 @@
     <div class="brand">Stokes Shelter<small>Staff area</small></div>
     <button data-page="site">Site &amp; header</button>
     <button data-page="logo">Logo</button>
+    <button data-page="pages" data-pages>Pages studio</button>
     <button data-page="staff" data-manage>Staff &amp; access</button>
     <button data-page="email" data-settings>Email</button>
     <button data-page="cloudflare" data-settings>Cloudflare security</button>
@@ -220,10 +221,27 @@
       </div>
     </section>
 
+    <section data-panel="pages" class="hidden">
+      <div class="card">
+        <h2>Pages studio</h2>
+        <p class="hint">Pick a page, change its heading or intro, then save. The public site shows the change within a minute. Leave a box empty to keep the wording the page already has.</p>
+        <label for="page-pick">Page</label>
+        <select id="page-pick"></select>
+        <label for="page-heading">Heading</label>
+        <input type="text" id="page-heading">
+        <label for="page-intro">Intro paragraph</label>
+        <textarea id="page-intro" rows="4"></textarea>
+        <div class="actions">
+          <button class="primary" type="button" id="page-save">Save page</button>
+          <span class="status" data-status="pages"></span>
+        </div>
+      </div>
+    </section>
+
     <section data-panel="staff" class="hidden">
       <div class="card">
         <h2>Staff &amp; access</h2>
-        <p class="hint">Add someone by the email they use for Freebuff. Editors can change site wording and the announcement; admins can also change settings, email, Cloudflare and staff.</p>
+        <p class="hint">Add someone by their email address; they choose their own password on their first sign-in. Editors can edit pages in the Pages studio and change the site name, tagline, logo, button and announcement. Admins can also change email, Cloudflare and staff.</p>
         <form id="staff-form">
           <div class="row">
             <div>
@@ -370,8 +388,10 @@ async function boot() {
   $('#account-detail').textContent = `${state.me.user.email || ''} — ${state.role}`;
   $$('nav.side button[data-manage]').forEach((b) => b.classList.toggle('hidden', !state.permissions.manageStaff));
   $$('nav.side button[data-settings]').forEach((b) => b.classList.toggle('hidden', !state.permissions.editSettings));
+  $$('nav.side button[data-pages]').forEach((b) => b.classList.toggle('hidden', !state.permissions.editPages));
   show('app');
   await loadSettings();
+  setupPagesStudio();
   await loadStaff();
   go(location.hash.replace('#', '') || 'site');
 }
@@ -550,7 +570,7 @@ function go(page) {
   $$('section[data-panel]').forEach((s) => s.classList.add('hidden'));
   panel.classList.remove('hidden');
   $$('nav.side button').forEach((b) => b.toggleAttribute('aria-current', b.dataset.page === page));
-  const titles = { site: 'Site & header', logo: 'Logo', staff: 'Staff & access', email: 'Email connection', cloudflare: 'Cloudflare security', account: 'My account' };
+  const titles = { site: 'Site & header', logo: 'Logo', pages: 'Pages studio', staff: 'Staff & access', email: 'Email connection', cloudflare: 'Cloudflare security', account: 'My account' };
   $('#page-title').textContent = titles[page] || 'Staff area';
   history.replaceState(null, '', '#' + page);
 }
@@ -623,6 +643,64 @@ $('#email-test').addEventListener('click', async () => {
     setStatus('email', `Test sent to ${res.sentTo}`, 'ok');
   } catch (err) {
     setStatus('email', err.message + (err.body?.detail ? ` (${String(err.body.detail).slice(0, 140)})` : ''), 'err');
+  }
+});
+
+/* ------------------------------------------------------------ pages studio */
+
+const PAGES = [
+  ['home', 'Home'],
+  ['about', 'About us'],
+  ['adopt', 'Adoptable pets'],
+  ['board', 'Become a board member'],
+  ['contact', 'Contact us'],
+  ['faces', 'F.A.C.E.S of FOSS'],
+  ['give', 'Give'],
+  ['impact-2025', 'Our impact in 2025'],
+  ['newsletter', 'Newsletter'],
+  ['reading-buddies', 'Reading buddies'],
+  ['recognitions', 'Recognitions and certifications'],
+  ['sponsors', 'Sponsors'],
+  ['volunteer', 'Volunteer'],
+];
+
+function fillPageFields() {
+  const slug = $('#page-pick').value;
+  $('#page-heading').value = state.settings[`page.${slug}.heading`] || '';
+  $('#page-intro').value = state.settings[`page.${slug}.intro`] || '';
+}
+
+function setupPagesStudio() {
+  if (!state.permissions.editPages) return;
+  const picker = $('#page-pick');
+  if (!picker.options.length) {
+    for (const [slug, label] of PAGES) picker.append(new Option(label, slug));
+    picker.addEventListener('change', () => {
+      setStatus('pages', '');
+      fillPageFields();
+    });
+  }
+  fillPageFields();
+}
+
+$('#page-save').addEventListener('click', async () => {
+  const slug = $('#page-pick').value;
+  const body = {};
+  body[`page.${slug}.heading`] = $('#page-heading').value.trim();
+  body[`page.${slug}.intro`] = $('#page-intro').value.trim();
+  setStatus('pages', 'Saving…');
+  try {
+    await api('/api/settings', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    await loadSettings();
+    fillPageFields();
+    setStatus('pages', 'Saved', 'ok');
+    toast('Page saved');
+  } catch (err) {
+    setStatus('pages', err.message, 'err');
   }
 });
 

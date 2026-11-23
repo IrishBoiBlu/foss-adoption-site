@@ -20,7 +20,27 @@ const PUBLIC_SITE_ORIGINS = new Set([
 ])
 
 const ROLES = ['owner', 'admin', 'editor']
+
+// Pages an editor can retitle in the staff area's Pages studio.
+const PAGES = [
+  ['home', 'Home'],
+  ['about', 'About us'],
+  ['adopt', 'Adoptable pets'],
+  ['board', 'Become a board member'],
+  ['contact', 'Contact us'],
+  ['faces', 'F.A.C.E.S of FOSS'],
+  ['give', 'Give'],
+  ['impact-2025', 'Our impact in 2025'],
+  ['newsletter', 'Newsletter'],
+  ['reading-buddies', 'Reading buddies'],
+  ['recognitions', 'Recognitions and certifications'],
+  ['sponsors', 'Sponsors'],
+  ['volunteer', 'Volunteer'],
+]
+const PAGE_KEYS = PAGES.flatMap(([slug]) => [`page.${slug}.heading`, `page.${slug}.intro`])
+
 const EDITOR_KEYS = new Set([
+  ...PAGE_KEYS,
   'site.name',
   'site.tagline',
   'site.logo_url',
@@ -65,6 +85,7 @@ const DEFAULTS = {
   'cloudflare.zone_id': '',
   'cloudflare.api_token': '',
 }
+for (const key of PAGE_KEYS) DEFAULTS[key] = ''
 
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS users (
@@ -301,12 +322,19 @@ async function sha256Hex(text) {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-// 120k rounds of PBKDF2-SHA256, stored as pbkdf2$rounds$salt$hash.
+// PBKDF2-SHA256 rounds, stored as pbkdf2$rounds$salt$hash. Workers refuses
+// anything above 100000, which is also the value to hash new passwords with.
+const PASSWORD_ROUNDS = 100000
+
 async function hashPassword(password) {
   const salt = crypto.getRandomValues(new Uint8Array(16))
   const key = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits'])
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 120000, hash: 'SHA-256' }, key, 256)
-  return `pbkdf2$120000$${bytesToBase64(salt)}$${bytesToBase64(new Uint8Array(bits))}`
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: PASSWORD_ROUNDS, hash: 'SHA-256' },
+    key,
+    256
+  )
+  return `pbkdf2$${PASSWORD_ROUNDS}$${bytesToBase64(salt)}$${bytesToBase64(new Uint8Array(bits))}`
 }
 
 function safeEqual(left, right) {
@@ -503,6 +531,7 @@ async function staffFor(db, email) {
 function can(role) {
   return {
     editSite: role === 'owner' || role === 'admin' || role === 'editor',
+    editPages: role === 'owner' || role === 'admin' || role === 'editor',
     editSettings: role === 'owner' || role === 'admin',
     manageStaff: role === 'owner' || role === 'admin',
     owner: role === 'owner',
@@ -528,6 +557,12 @@ async function handleApi(request, env, url) {
       ctaUrl: settings['header.cta_url'],
       announcement: settings['header.show_announcement'] === 'true' ? settings['header.announcement'] : '',
       contactEmail: settings['footer.contact_email'],
+      pages: Object.fromEntries(
+        PAGES.map(([slug]) => [
+          slug,
+          { heading: settings[`page.${slug}.heading`] ?? '', intro: settings[`page.${slug}.intro`] ?? '' },
+        ])
+      ),
     }
     return json(body, 200, {
       'cache-control': 'public, max-age=60',
@@ -552,6 +587,7 @@ async function handleApi(request, env, url) {
   }
 
   if (path === '/api/health') return json({ ok: true })
+
 
   /* ------------------------------------------------------------------ sign in */
 
