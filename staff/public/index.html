@@ -398,13 +398,13 @@ async function refreshLoginState() {
     if (state.emailConnected) {
       note.classList.add('hidden');
     } else {
-      note.textContent = 'Email is not connected yet, so sign-in codes are paused. Once an owner connects email in the staff area, every sign-in also sends a 6-digit code.';
+      note.textContent = 'Email is not connected and tested yet, so sign-in codes are paused. Once an owner connects email in the staff area and a test message arrives, every sign-in also sends a 6-digit code.';
       note.classList.remove('hidden');
     }
     $('#setup-code-block').classList.toggle('hidden', !state.emailConnected);
     $('#setup-code-hint').textContent = state.emailConnected
       ? 'Press “Email me a code”, type the code it sends, then choose your password.'
-      : 'Email is not connected yet, so no emailed code is needed for this first sign-in.';
+      : 'Email is not connected and tested yet, so no emailed code is needed for this first sign-in.';
   } catch (err) {
     // The sign-in form works without the note.
   }

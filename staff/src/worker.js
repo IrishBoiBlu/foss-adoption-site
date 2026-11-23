@@ -57,6 +57,9 @@ const DEFAULTS = {
   'email.from_address': '',
   'email.reply_to': '',
   'email.api_key': '',
+  // Set to 'true' only after a test message actually goes out, so a mistyped
+  // key can never switch sign-in codes on and lock everyone out.
+  'email.verified': 'false',
   'cloudflare.account_id': '',
   'cloudflare.zone_id': '',
   'cloudflare.api_token': '',
@@ -338,7 +341,19 @@ async function currentStaff(env, request) {
 /* ------------------------------------------------------------ emailed codes */
 
 function emailConnected(settings) {
-  return Boolean(settings['email.api_key'] && settings['email.from_address'])
+  return Boolean(
+    settings['email.api_key'] && settings['email.from_address'] && settings['email.verified'] === 'true'
+  )
+}
+
+async function markEmailUnverified(db, actor) {
+  await db
+    .prepare(
+      `INSERT INTO settings (key, value, updated_at, updated_by) VALUES ('email.verified', 'false', ?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = 'false', updated_at = excluded.updated_at, updated_by = excluded.updated_by`
+    )
+    .bind(new Date().toISOString(), actor ?? 'system')
+    .run()
 }
 
 async function sendMail(settings, { to, subject, text }) {
@@ -552,7 +567,7 @@ async function handleApi(request, env, url) {
     if (user && user.status !== 'active') return json({ error: 'This account is paused. Ask an owner.' }, 403)
     const settings = await readSettings(db)
     if (!emailConnected(settings)) {
-      return json({ error: 'Email is not connected yet, so no code can be sent. Ask an owner to connect it in the staff area.' }, 400)
+      return json({ error: 'Email is not connected and tested yet, so no code can be sent. An owner can set that up in the staff area.' }, 400)
     }
     const purpose = user && user.password_hash ? 'reset' : 'setup'
     const issued = await issueCode(env, settings, email, purpose)
@@ -697,6 +712,9 @@ async function handleApi(request, env, url) {
         .run()
       changed.push(key)
     }
+    if (changed.some((key) => key === 'email.api_key' || key === 'email.from_address')) {
+      await markEmailUnverified(db, me.staff.email)
+    }
     if (changed.length) await audit(db, me.staff.email, 'settings.update', changed.join(', '))
     const settings = await readSettings(db)
     return json({ ok: true, changed, settings: redact(settings, me.staff.role) })
@@ -817,7 +835,14 @@ async function handleApi(request, env, url) {
     const detail = await res.text()
     await audit(db, me.staff.email, 'email.test', `status=${res.status}`)
     if (!res.ok) return json({ error: 'The email service refused the message.', detail: detail.slice(0, 500) }, 400)
-    return json({ ok: true, sentTo: to })
+    await db
+      .prepare(
+        `INSERT INTO settings (key, value, updated_at, updated_by) VALUES ('email.verified', 'true', ?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = 'true', updated_at = excluded.updated_at, updated_by = excluded.updated_by`
+      )
+      .bind(new Date().toISOString(), me.staff.email)
+      .run()
+    return json({ ok: true, sentTo: to, codesOn: true })
   }
 
   if (path === '/api/cloudflare/check' && method === 'POST') {
