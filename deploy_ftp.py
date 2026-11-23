@@ -42,8 +42,15 @@ def credentials():
     host = os.environ.get("FTP_HOST", "").strip()
     user = os.environ.get("FTP_USER", "").strip()
     password = os.environ.get("FTP_PASSWORD", "")
-    missing = [name for name, value in (("FTP_HOST", host), ("FTP_USER", user),
-                                        ("FTP_PASSWORD", password)) if not value]
+    pairs = (("FTP_HOST", host), ("FTP_USER", user), ("FTP_PASSWORD", password))
+    missing = [name for name, value in pairs if not value]
+    # In the scheduled sync FTP is optional until the account details are added,
+    # so a run before setup says so and carries on. A half-filled setup is still
+    # an error: that always means something was typed or saved incompletely.
+    if missing and len(missing) == len(pairs) and os.environ.get("FTP_OPTIONAL") == "1":
+        print("FTP publishing is not set up yet (no FTP_HOST, FTP_USER or "
+              "FTP_PASSWORD), so this run skipped the upload. See HOSTINGER.md.")
+        return None
     if missing:
         raise SystemExit(
             "FTP is not set up yet - missing " + ", ".join(missing) + ".\n"
@@ -92,7 +99,10 @@ def save_state(root, files):
 
 
 def connect():
-    host, user, password = credentials()
+    found = credentials()
+    if found is None:
+        return None
+    host, user, password = found
     port = int(os.environ.get("FTP_PORT", "21"))
     if TLS:
         ftp = ftplib.FTP_TLS(timeout=90)
@@ -177,6 +187,8 @@ def upload(ftp, root, files, state):
 def test():
     host = os.environ.get("FTP_HOST", "").strip()
     ftp = connect()
+    if ftp is None:
+        return
     root = remote_root(ftp)
     print(f"Connected to {host} as {os.environ.get('FTP_USER', '').strip()}.")
     print(f"Home folder: {ftp.pwd()}")
@@ -237,6 +249,8 @@ def main():
         return
 
     ftp = connect()
+    if ftp is None:
+        return
     try:
         root = remote_root(ftp)
         ensure_remote_dir(ftp, root)

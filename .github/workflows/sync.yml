@@ -62,12 +62,14 @@ jobs:
             ftp-state-
 
       - name: Publish to Hostinger over FTP
-        if: ${{ secrets.FTP_HOST != '' }}
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_REMOTE_DIR: ${{ vars.FTP_REMOTE_DIR }}
+          # Before the FTP account details are added the step reports that and
+          # moves on; a half-filled setup still fails the run.
+          FTP_OPTIONAL: "1"
         run: python3 deploy_ftp.py
 
       - uses: actions/upload-pages-artifact@v3
