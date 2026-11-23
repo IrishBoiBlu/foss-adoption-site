@@ -1,8 +1,9 @@
 name: ShelterLuv sync
 
 # Pulls the shelter's live pet listings every 30 minutes and republishes the
-# site to GitHub Pages. Nothing is committed back: the deployed copy carries the
-# latest pets, and the next run starts from the saved pages again.
+# site twice: to Hostinger over FTP (the public address, foss.bluhuskyinc.com)
+# and to GitHub Pages (the backup address). Nothing is committed back: both
+# copies are built fresh from the saved pages on every run.
 on:
   schedule:
     - cron: "*/30 * * * *"
@@ -16,7 +17,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: github-pages
+  group: shelter-sync
   cancel-in-progress: false
 
 jobs:
@@ -37,8 +38,37 @@ jobs:
       - name: Install the image tools
         run: python3 -m pip install --quiet --disable-pip-version-check pillow
 
-      - name: Stage the site for publishing
+      - name: Stage the site for GitHub Pages
         run: python3 deploy_pages.py
+
+      - name: Package the site for Hostinger
+        run: python3 deploy_hostinger.py
+
+      - name: Keep the uploadable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: foss-site-public_html
+          path: files/foss-site-public_html.zip
+          retention-days: 7
+
+      # Remembers which files were already sent, so an ordinary run uploads only
+      # the pages and photos that changed instead of the whole site.
+      - name: Restore the upload record
+        uses: actions/cache@v4
+        with:
+          path: .ftp-state.json
+          key: ftp-state-${{ github.run_id }}
+          restore-keys: |
+            ftp-state-
+
+      - name: Publish to Hostinger over FTP
+        if: ${{ secrets.FTP_HOST != '' }}
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_REMOTE_DIR: ${{ vars.FTP_REMOTE_DIR }}
+        run: python3 deploy_ftp.py
 
       - uses: actions/upload-pages-artifact@v3
         with:

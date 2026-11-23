@@ -4,6 +4,9 @@ sync.log
 .sync.lock
 scheduler.pid
 .deploy/
+.deploy-hostinger/
+.ftp-state.json
+files/foss-site-public_html.zip
 .wrangler/
 node_modules/
 dist/

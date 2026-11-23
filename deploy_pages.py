@@ -18,8 +18,8 @@ try:
 except ImportError:  # publishing still works without the image step
     Image = None
 
-SRC = "files/foss-clone"
-OUT = ".deploy"
+SRC = os.environ.get("SITE_SRC", "files/foss-clone")
+OUT = os.environ.get("OUT_DIR", "").strip() or ".deploy"
 
 # Photos copied from the shelter arrive as multi-megabyte PNGs. Shrinking them
 # at publish time keeps the pages light without touching the saved copy, which
@@ -34,9 +34,13 @@ IMG_QUALITY = 80
 # publishes the usual https://<user>.github.io/<repo>/ address instead.
 CUSTOM_DOMAIN = ""
 
+# Hostinger runs the site from its own folder, so the pages live at the root of
+# the domain and no CNAME file is involved. Only the public address changes.
+PUBLIC_DOMAIN = os.environ.get("PUBLIC_DOMAIN", "").strip()
+
 # Default to the repository name when running inside GitHub Actions.
 base = os.environ.get("BASE_PATH", "").strip()
-if not base and CUSTOM_DOMAIN:
+if not base and (CUSTOM_DOMAIN or PUBLIC_DOMAIN):
     base = "/"
 if not base and os.environ.get("GITHUB_REPOSITORY"):
     repo = os.environ["GITHUB_REPOSITORY"].split("/")[-1]
@@ -119,6 +123,8 @@ def site_host():
     """The public address the pages are served from."""
     if CUSTOM_DOMAIN:
         return f"https://{CUSTOM_DOMAIN}"
+    if PUBLIC_DOMAIN:
+        return f"https://{PUBLIC_DOMAIN}"
     repo = os.environ.get("GITHUB_REPOSITORY", "").split("/")
     if len(repo) == 2 and repo[0] and repo[1]:
         # base already carries the repository path for a project site.
