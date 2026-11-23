@@ -15,8 +15,14 @@ import shutil
 SRC = "files/foss-clone"
 OUT = ".deploy"
 
+# The site is served from its own domain, so pages stay at the root. The CNAME
+# file tells GitHub Pages which domain to answer for.
+CUSTOM_DOMAIN = "foss.bluhuskyinc.com"
+
 # Default to the repository name when running inside GitHub Actions.
 base = os.environ.get("BASE_PATH", "").strip()
+if not base and CUSTOM_DOMAIN:
+    base = "/"
 if not base and os.environ.get("GITHUB_REPOSITORY"):
     repo = os.environ["GITHUB_REPOSITORY"].split("/")[-1]
     base = "/" if repo.lower().endswith(".github.io") else f"/{repo}/"
@@ -69,6 +75,8 @@ def main():
                 changed += 1
 
     open(os.path.join(OUT, ".nojekyll"), "w").close()
+    if CUSTOM_DOMAIN:
+        open(os.path.join(OUT, "CNAME"), "w", encoding="utf-8").write(CUSTOM_DOMAIN + "\n")
     print(f"Staged {OUT} with base path {base} ({changed} files rewritten)")
 
 
