@@ -13,7 +13,10 @@ import os
 import re
 import shutil
 
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:  # publishing still works without the image step
+    Image = None
 
 SRC = "files/foss-clone"
 OUT = ".deploy"
@@ -228,7 +231,7 @@ def main():
         if "index.html" in files:
             pages.append(os.path.relpath(os.path.join(root, "index.html"), OUT))
 
-    mapping = optimise_images()
+    mapping = optimise_images() if Image else {}
     if mapping:
         for page in pages:
             path = os.path.join(OUT, page)

@@ -34,6 +34,9 @@ jobs:
           chmod +x sync-one.sh refresh.sh
           ./sync-one.sh
 
+      - name: Install the image tools
+        run: python3 -m pip install --quiet --disable-pip-version-check pillow
+
       - name: Stage the site for publishing
         run: python3 deploy_pages.py
 
