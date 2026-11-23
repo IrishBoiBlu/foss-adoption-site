@@ -299,8 +299,9 @@ async function handleApi(request, env, auth, url) {
     })
   }
 
-  // Public: uploaded logo bytes.
-  if (path.startsWith('/api/logo')) {
+  // Public: uploaded logo bytes. Reads only — uploading the logo happens below,
+  // behind the staff check.
+  if (path.startsWith('/api/logo') && (method === 'GET' || method === 'HEAD')) {
     const row = await db.prepare('SELECT type, bytes FROM assets ORDER BY created_at DESC LIMIT 1').first()
     if (!row) return new Response(null, { status: 404 })
     return new Response(row.bytes, {
