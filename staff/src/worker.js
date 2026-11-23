@@ -496,7 +496,13 @@ async function handleApi(request, env, url) {
   // behind the staff check.
   if (path.startsWith('/api/logo') && (method === 'GET' || method === 'HEAD')) {
     const row = await db.prepare('SELECT type, bytes FROM assets ORDER BY created_at DESC LIMIT 1').first()
-    if (!row) return new Response(null, { status: 404 })
+    if (!row) {
+      // Nothing uploaded yet: serve the shelter logo that ships with the app.
+      const fallback = await env.ASSETS.fetch(new URL('/logo-default.png', url).toString(), { method })
+      const type = fallback.headers.get('content-type') ?? ''
+      if (fallback.ok && type.startsWith('image/')) return fallback
+      return new Response(null, { status: 404 })
+    }
     return new Response(row.bytes, {
       headers: { 'content-type': row.type, 'cache-control': 'public, max-age=300' },
     })

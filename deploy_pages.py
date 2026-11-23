@@ -36,8 +36,13 @@ def fix_js(text):
     if base == "/":
         return text
     prefix = base.rstrip("/")
+    # A path added to another site's address (the staff area's config) belongs
+    # to that site, so it must keep its own root path.
+    held = '\x00ADMIN_ORIGIN + "\x00'
+    text = text.replace('ADMIN_ORIGIN + "', held)
     text = re.sub(r'"/(?=[A-Za-z#?])', f'"{prefix}/', text)
-    return re.sub(r'"/(?=")', f'"{prefix}/', text)
+    text = re.sub(r'"/(?=")', f'"{prefix}/', text)
+    return text.replace(held, 'ADMIN_ORIGIN + "')
 
 
 def main():
