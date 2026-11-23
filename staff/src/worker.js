@@ -2,11 +2,7 @@ import { createFreebuffAuth, isSameOriginRequest } from '@freebuff/auth'
 
 // Who runs the place on day one. They are created as owner the first time they
 // sign in with this exact email address.
-const BOOTSTRAP_OWNER_EMAILS = [
-  'dannyrcollinshr@gmail.com',
-  'dannyrcollinsjr@gmail.com',
-  'irishboiblu@gmail.com',
-]
+const BOOTSTRAP_OWNER_EMAILS = ['dannyrcollinsjr@gmail.com', 'irishboiblu@gmail.com']
 
 // The public site lives on GitHub Pages; it reads this app's public config.
 const PUBLIC_SITE_ORIGINS = new Set([
@@ -111,6 +107,17 @@ async function ensureSchema(env) {
       `INSERT INTO settings (key, value, updated_at, updated_by) VALUES (?, ?, ?, ?)
        ON CONFLICT(key) DO NOTHING`
     ).bind('bootstrap.owner', BOOTSTRAP_OWNER_EMAILS.join(','), now, 'setup').run()
+
+    // Access follows the list above: an address the list no longer names loses
+    // the invitation and owner account it was seeded with.
+    const owners = BOOTSTRAP_OWNER_EMAILS.map((email) => email.trim().toLowerCase())
+    const marks = owners.map(() => '?').join(', ')
+    await env.DB.prepare(
+      `DELETE FROM invites WHERE invited_by = 'setup' AND lower(email) NOT IN (${marks})`
+    ).bind(...owners).run()
+    await env.DB.prepare(
+      `DELETE FROM users WHERE role = 'owner' AND lower(email) NOT IN (${marks})`
+    ).bind(...owners).run()
   })().catch((err) => {
     schemaReady = undefined
     throw err
