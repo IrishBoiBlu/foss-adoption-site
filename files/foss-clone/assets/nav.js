@@ -288,7 +288,7 @@
     paw.className = wide ? "foss-paw foss-paw-wide" : "foss-paw";
     // The first print sits at the bottom of the column, the last at the top,
     // so the trail fills upward as the page goes down.
-    paw.style.top = (94 - (i * 88) / (COUNT - 1)).toFixed(2) + "%";
+    paw.style.top = (92 - (i * 84) / (COUNT - 1)).toFixed(2) + "%";
     paw.style.left = (wide ? 48 : 14) + (i % 3) * 6 + "px";
     paw.style.width = size + "px";
     paw.style.height = size + "px";
