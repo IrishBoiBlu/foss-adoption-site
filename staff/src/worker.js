@@ -181,8 +181,19 @@ export default {
 
     if (url.pathname.startsWith('/api/')) {
       await ensureSchema(env)
+      // The public site's sign-in page sends cookies with its requests, so these
+      // two routes answer with that origin and allow credentials.
+      const embed = embeddedOrigin(request)
+      const shared = embed && (url.pathname.startsWith('/api/auth/') || url.pathname === '/api/me')
+      if (shared && request.method === 'OPTIONS') {
+        return new Response(null, { status: 204, headers: authCorsHeaders(embed) })
+      }
       try {
-        return await handleApi(request, env, url)
+        const response = await handleApi(request, env, url)
+        if (!shared) return response
+        const headers = new Headers(response.headers)
+        for (const [key, value] of Object.entries(authCorsHeaders(embed))) headers.set(key, value)
+        return new Response(response.body, { status: response.status, headers })
       } catch (err) {
         console.error('api error', url.pathname, err && err.stack ? err.stack : String(err))
         return json({ error: 'Something went wrong on our side.' }, 500)
@@ -204,6 +215,24 @@ function json(data, status = 200, extra = {}) {
       ...extra,
     },
   })
+}
+
+// The public site hosts the sign-in form itself (see /staff on GitHub Pages), so
+// its origin may call the sign-in endpoints. Nothing else may.
+function embeddedOrigin(request) {
+  const origin = request.headers.get('origin') ?? ''
+  return PUBLIC_SITE_ORIGINS.has(origin) ? origin : ''
+}
+
+function authCorsHeaders(origin) {
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'content-type',
+    'Access-Control-Max-Age': '600',
+    Vary: 'Origin',
+  }
 }
 
 function corsHeaders(origin) {
@@ -317,12 +346,15 @@ function readCookie(request, name) {
   return value && value.length <= 4000 ? value : null
 }
 
-function sessionCookie(request, token, maxAgeSeconds) {
+function sessionCookie(request, token, maxAgeSeconds, crossSite = false) {
   const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : ''
-  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}${secure}`
+  // A sign-in started from the public site's own page is a cross-site request,
+  // so only that cookie has to be SameSite=None (and therefore Secure).
+  const sameSite = crossSite ? 'None' : 'Lax'
+  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${maxAgeSeconds}${secure}`
 }
 
-async function startSession(env, request, userId) {
+async function startSession(env, request, userId, crossSite = false) {
   const token = randomToken()
   const now = new Date()
   await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(now.toISOString()).run()
@@ -332,7 +364,7 @@ async function startSession(env, request, userId) {
   )
     .bind(await sha256Hex(token), userId, now.toISOString(), expiresAt)
     .run()
-  return sessionCookie(request, token, SESSION_DAYS * 86400)
+  return sessionCookie(request, token, SESSION_DAYS * 86400, crossSite)
 }
 
 // Who is asking, from the session cookie this app issued.
@@ -530,7 +562,8 @@ async function handleApi(request, env, url) {
   }
 
   if (path === '/api/auth/login' && method === 'POST') {
-    if (!isSameOriginRequest(request, env.APP_ORIGIN)) return json({ error: 'Cross-site request refused.' }, 403)
+    const crossSite = Boolean(embeddedOrigin(request))
+    if (!crossSite && !isSameOriginRequest(request, env.APP_ORIGIN)) return json({ error: 'Cross-site request refused.' }, 403)
     const body = await request.json().catch(() => null)
     const email = String(body?.email ?? '').trim().toLowerCase()
     const password = String(body?.password ?? '')
@@ -563,7 +596,7 @@ async function handleApi(request, env, url) {
     const settings = await readSettings(db)
     if (!emailConnected(settings)) {
       // No way to deliver a code yet: password only, and the screen says so.
-      const cookie = await startSession(env, request, user.id)
+      const cookie = await startSession(env, request, user.id, crossSite)
       await db.prepare('UPDATE users SET last_seen_at = ? WHERE id = ?').bind(new Date().toISOString(), user.id).run()
       await audit(db, email, 'auth.sign_in', 'password only, email not connected')
       return json({ step: 'done', emailConnected: false }, 200, { 'set-cookie': cookie })
@@ -576,7 +609,7 @@ async function handleApi(request, env, url) {
 
   // Sends a code for a first password or a forgotten one.
   if (path === '/api/auth/start' && method === 'POST') {
-    if (!isSameOriginRequest(request, env.APP_ORIGIN)) return json({ error: 'Cross-site request refused.' }, 403)
+    if (!embeddedOrigin(request) && !isSameOriginRequest(request, env.APP_ORIGIN)) return json({ error: 'Cross-site request refused.' }, 403)
     const body = await request.json().catch(() => null)
     const email = String(body?.email ?? '').trim().toLowerCase()
     if (!email) return json({ error: 'Enter your email first.' }, 400)
@@ -597,7 +630,8 @@ async function handleApi(request, env, url) {
   }
 
   if (path === '/api/auth/set-password' && method === 'POST') {
-    if (!isSameOriginRequest(request, env.APP_ORIGIN)) return json({ error: 'Cross-site request refused.' }, 403)
+    const crossSite = Boolean(embeddedOrigin(request))
+    if (!crossSite && !isSameOriginRequest(request, env.APP_ORIGIN)) return json({ error: 'Cross-site request refused.' }, 403)
     const body = await request.json().catch(() => null)
     const email = String(body?.email ?? '').trim().toLowerCase()
     const password = String(body?.password ?? '')
@@ -647,12 +681,13 @@ async function handleApi(request, env, url) {
       await db.prepare("UPDATE users SET role = 'owner' WHERE id = ?").bind(accountId).run()
     }
 
-    const cookie = await startSession(env, request, accountId)
+    const cookie = await startSession(env, request, accountId, crossSite)
     return json({ ok: true }, 200, { 'set-cookie': cookie })
   }
 
   if (path === '/api/auth/verify' && method === 'POST') {
-    if (!isSameOriginRequest(request, env.APP_ORIGIN)) return json({ error: 'Cross-site request refused.' }, 403)
+    const crossSite = Boolean(embeddedOrigin(request))
+    if (!crossSite && !isSameOriginRequest(request, env.APP_ORIGIN)) return json({ error: 'Cross-site request refused.' }, 403)
     const body = await request.json().catch(() => null)
     const email = String(body?.email ?? '').trim().toLowerCase()
     const code = String(body?.code ?? '').trim()
@@ -670,7 +705,7 @@ async function handleApi(request, env, url) {
       return json({ error: checked.error }, 401)
     }
     await clearFailures(db, `code:${email}`)
-    const cookie = await startSession(env, request, user.id)
+    const cookie = await startSession(env, request, user.id, crossSite)
     await db.prepare('UPDATE users SET last_seen_at = ? WHERE id = ?').bind(new Date().toISOString(), user.id).run()
     await audit(db, email, 'auth.sign_in', 'password + email code')
     return json({ ok: true }, 200, { 'set-cookie': cookie })
