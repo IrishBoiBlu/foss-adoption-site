@@ -45,9 +45,10 @@ const SECRET_KEYS = new Set(['email.api_key', 'cloudflare.api_token'])
 
 const DEFAULTS = {
   'site.name': 'Friends of the Stokes Shelter',
-  'site.tagline': 'A safe haven for pets, and the people who love them.',
+  'site.tagline':
+    'We are a nonprofit adoption center. Every dog and cat in our care comes from the Stokes County Animal Shelter, and every one of them is waiting for a family to call their own.',
   'site.logo_url': '/api/logo',
-  'header.cta_label': 'Meet our pets',
+  'header.cta_label': 'Meet adoptable pets',
   'header.cta_url': '/adopt/all/',
   'header.announcement': '',
   'header.show_announcement': 'false',
@@ -146,6 +147,16 @@ async function ensureSchema(env) {
       `INSERT INTO settings (key, value, updated_at, updated_by) VALUES (?, ?, ?, ?)
        ON CONFLICT(key) DO NOTHING`
     ).bind('bootstrap.owner', BOOTSTRAP_OWNER_EMAILS.join(','), now, 'setup').run()
+
+    // Placeholder wording saved before the site copy existed follows the site now.
+    for (const [key, old] of [
+      ['site.tagline', 'A safe haven for pets, and the people who love them.'],
+      ['header.cta_label', 'Meet our pets'],
+    ]) {
+      await env.DB.prepare('UPDATE settings SET value = ?, updated_at = ? WHERE key = ? AND value = ?')
+        .bind(DEFAULTS[key], now, key, old)
+        .run()
+    }
 
     // Access follows the list above: an address the list no longer names loses
     // the invitation and owner account it was seeded with.
