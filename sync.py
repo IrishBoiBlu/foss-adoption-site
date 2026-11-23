@@ -210,8 +210,10 @@ def card_html(pet):
     )
 
 
-CARD_GRID = ('<div class="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">'
-             '{}</div>')
+# The listing page already provides the grid container (data-testid="adoptable-grid"),
+# so this is the cards alone. Wrapping them in a second grid squeezed every card
+# into one column of a single column's worth of space.
+CARD_GRID = '{}'
 EMPTY_GRID = ('<p class="rounded-2xl border border-ink/10 bg-cream px-6 py-10 text-center '
               'text-sm text-ink-soft">No {} are listed right now. Check back soon.</p>')
 
@@ -420,7 +422,8 @@ def main():
                         '<section class="py-16 sm:py-20" data-testid="adoptable-listings" '
                         f'data-state="ready" data-pet-count="{len(group)}">'
                         '<div class="mx-auto max-w-6xl px-5 sm:px-8">'
-                        f'{grid_html(group, meta["many"])}</div></section>')
+                        '<div class="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">'
+                        f'{grid_html(group, meta["many"])}</div></div></section>')
                     updated_page = updated_page[:start] + section + updated_page[end:]
         else:
             updated_page, ok = replace_grid(

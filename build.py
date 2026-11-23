@@ -139,7 +139,6 @@ STAFF_INDEX = r'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="robots" content="noindex"/>
-<meta http-equiv="refresh" content="2; url=https://shelter-staff-admin-0xjqut.freebuff.site/"/>
 <title>Staff sign in | Friends of the Stokes Shelter</title>
 <meta name="description" content="Staff sign in for Friends of the Stokes Shelter."/>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
@@ -182,6 +181,31 @@ STAFF_INDEX = r'''<!doctype html>
     font-size: .82rem; color: hsl(var(--ink) / .6); }
   .staff-foot a { color: hsl(var(--coral-deep)); text-decoration: none; }
   .staff-foot a:hover { text-decoration: underline; }
+  .staff-form { display: grid; gap: .55rem; width: min(24rem, 100%); margin: 0 auto;
+    padding: 1.5rem 1.4rem 1.6rem; text-align: left;
+    border: 1px solid hsl(var(--ink) / .12); border-radius: 1.35rem;
+    background: hsl(0 0% 100% / .82);
+    box-shadow: 0 24px 45px -34px hsl(var(--ink) / .5); }
+  .staff-form label { margin-top: .35rem; font-size: .7rem; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase; color: hsl(var(--ink) / .6); }
+  .staff-form input { width: 100%; border: 1px solid hsl(var(--ink) / .18);
+    border-radius: .8rem; padding: .72rem .85rem; font: inherit; font-size: .98rem;
+    color: hsl(var(--ink)); background: #fff; }
+  .staff-form input:focus-visible { outline: 2px solid hsl(var(--coral));
+    outline-offset: 1px; border-color: transparent; }
+  .staff-form .staff-btn { width: 100%; justify-content: center; margin-top: .7rem;
+    border: 0; cursor: pointer; }
+  .staff-form .staff-btn[disabled] { opacity: .6; cursor: progress; }
+  .staff-msg { margin: .35rem 0 0; font-size: .85rem; line-height: 1.5;
+    color: hsl(var(--ink) / .6); }
+  .staff-msg-err { color: hsl(2 70% 40%); }
+  .staff-msg-ok { color: hsl(160 45% 28%); }
+  .staff-link { margin: .2rem auto 0; padding: 0; border: 0; background: none;
+    cursor: pointer; font: inherit; font-size: .82rem; color: hsl(var(--coral-deep));
+    text-decoration: underline; text-underline-offset: 3px; }
+  .staff-open { margin: .5rem 0 0; font-size: .82rem; color: hsl(var(--ink) / .55); }
+  .staff-open a { color: hsl(var(--coral-deep)); }
+  .is-hidden { display: none !important; }
 </style>
 </head><body>
 <div class="min-h-screen bg-cream font-sans text-ink">
@@ -194,8 +218,22 @@ STAFF_INDEX = r'''<!doctype html>
 <h1 class="staff-title">Sign in to look after the shelter site</h1>
 <p class="staff-lede">The public pages are the same site visitors see. Behind this door you can change the name, logo, header and contact details, invite the rest of the team, and connect email and Cloudflare.</p>
 <div class="staff-actions">
-<a class="staff-btn" href="https://shelter-staff-admin-0xjqut.freebuff.site/">Continue to staff sign in<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
-<p class="staff-note">Taking you there in a moment&hellip;</p>
+<form class="staff-form" id="staff-form" novalidate>
+  <label for="staff-email">Email</label>
+  <input id="staff-email" name="email" type="email" autocomplete="username" required/>
+  <div id="staff-password-row">
+    <label for="staff-password" id="staff-password-label">Password</label>
+    <input id="staff-password" name="password" type="password" autocomplete="current-password"/>
+  </div>
+  <div id="staff-code-row" class="is-hidden">
+    <label for="staff-code">Six-digit code from your email</label>
+    <input id="staff-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"/>
+  </div>
+  <button class="staff-btn" type="submit" id="staff-submit">Sign in</button>
+  <p class="staff-msg" id="staff-msg" role="status" aria-live="polite"></p>
+  <button class="staff-link" type="button" id="staff-forgot">First time here, or forgot your password?</button>
+</form>
+<p class="staff-open">Already signed in? <a href="https://shelter-staff-admin-0xjqut.freebuff.site/">Open the staff area</a></p>
 </div>
 <div class="staff-panel">
 <p><strong>Adoptable pets</strong> refresh on their own every 30 minutes &mdash; nothing to update by hand.</p>
@@ -207,6 +245,141 @@ STAFF_INDEX = r'''<!doctype html>
 </main>
 <footer class="staff-foot">Friends of the Stokes Shelter &middot; Questions about access? Email <a href="mailto:friendsofthestokesshelter@gmail.com">friendsofthestokesshelter@gmail.com</a></footer>
 </div>
+<script>
+(function () {
+  var APP = 'https://shelter-staff-admin-0xjqut.freebuff.site';
+  var form = document.getElementById('staff-form');
+  var email = document.getElementById('staff-email');
+  var password = document.getElementById('staff-password');
+  var passwordRow = document.getElementById('staff-password-row');
+  var passwordLabel = document.getElementById('staff-password-label');
+  var codeRow = document.getElementById('staff-code-row');
+  var code = document.getElementById('staff-code');
+  var submit = document.getElementById('staff-submit');
+  var msg = document.getElementById('staff-msg');
+  var forgot = document.getElementById('staff-forgot');
+  var step = 'password';
+
+  function say(text, kind) {
+    msg.textContent = text || '';
+    msg.className = 'staff-msg' + (kind ? ' staff-msg-' + kind : '');
+  }
+  function setBusy(on, label) {
+    submit.disabled = on;
+    if (label) submit.textContent = label;
+  }
+  function setStep(next) {
+    step = next;
+    codeRow.classList.toggle('is-hidden', next === 'password');
+    passwordRow.classList.toggle('is-hidden', next === 'code');
+    passwordLabel.textContent = next === 'choose' ? 'Choose a password (10+ characters)' : 'Password';
+    password.setAttribute('autocomplete', next === 'choose' ? 'new-password' : 'current-password');
+    submit.textContent = next === 'code' ? 'Enter code' : next === 'choose' ? 'Save password' : 'Sign in';
+  }
+  async function call(path, body) {
+    var res = await fetch(APP + path, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      var err = new Error(data.error || 'That did not work. Try again.');
+      err.detail = data.detail;
+      throw err;
+    }
+    return data;
+  }
+  async function finish() {
+    say('Signed in. Opening the staff area…', 'ok');
+    setBusy(true);
+    try {
+      var res = await fetch(APP + '/api/me', { credentials: 'include' });
+      var me = await res.json();
+      if (me && me.signedIn) {
+        window.location.href = APP + '/';
+        return;
+      }
+    } catch (e) {
+      /* fall through to the plain link */
+    }
+    setBusy(false);
+    say('This browser did not keep the sign-in. Use “Open the staff area” just below — you are already signed in there.', 'err');
+  }
+  function showError(err) {
+    say(err.message || 'That did not work.', 'err');
+    if (/code from your email/i.test(err.message || '')) setStep('choose');
+  }
+
+  form.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    var address = email.value.trim();
+    if (!address) return say('Enter your email address first.', 'err');
+    setBusy(true, 'Checking…');
+    try {
+      if (step === 'code') {
+        if (code.value.trim().length < 6) throw new Error('Enter all six digits from the email.');
+        await call('/api/auth/verify', { email: address, code: code.value.trim() });
+        return await finish();
+      }
+      if (step === 'choose') {
+        if (password.value.length < 10) throw new Error('Use at least 10 characters for the password.');
+        var kept = await call('/api/auth/set-password', {
+          email: address,
+          password: password.value,
+          code: code.value.trim()
+        });
+        return await finish();
+      }
+      var data = await call('/api/auth/login', { email: address, password: password.value });
+      if (data.step === 'code') {
+        setStep('code');
+        say('We emailed a six-digit code to ' + address + '. It works for 10 minutes.');
+      } else if (data.step === 'setup') {
+        setStep('choose');
+        say('First time here — choose a password for your account.');
+      } else {
+        await finish();
+      }
+    } catch (err) {
+      showError(err);
+    } finally {
+      setBusy(false);
+      if (step === 'code') submit.textContent = 'Enter code';
+      if (step === 'choose') submit.textContent = 'Save password';
+    }
+  });
+
+  forgot.addEventListener('click', async function () {
+    var address = email.value.trim();
+    if (!address) return say('Type your email address above, then tap this again.', 'err');
+    setBusy(true, 'Sending…');
+    try {
+      var data = await call('/api/auth/start', { email: address });
+      setStep('choose');
+      if (data.sent === false) {
+        say('Choose a password for your account. No code is needed until email is connected.');
+      } else {
+        say('Check your email for a six-digit code, then choose your new password.');
+      }
+    } catch (err) {
+      showError(err);
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  fetch(APP + '/api/auth/state', { credentials: 'include' })
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      if (data && data.emailConnected === false && !msg.textContent) {
+        say('Passwords only for now — emailed codes turn on once email is connected.');
+      }
+    })
+    .catch(function () { /* the form still works without this note */ });
+})();
+</script>
 </body></html>
 '''
 
